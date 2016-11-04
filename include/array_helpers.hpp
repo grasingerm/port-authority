@@ -2,6 +2,7 @@
 #define __ARRAY_HELPERS_HPP__
 
 #include <array>
+#include <functional>
 #include <iostream>
 
 namespace {
@@ -17,10 +18,25 @@ using namespace std;
 template <typename T, size_t N>
 ostream &operator<<(ostream &os, array<T, N> a) {
   auto aiter = a.cbegin();
-  os << *a;
-  for (; aiter != a.cend(); ++aiter)
-    os << x << ' ';
+  os << '[' << *aiter;
+  for (++aiter; aiter != a.cend(); ++aiter)
+    os << ' ' << *aiter;
+  os << ']';
   return os;
+}
+
+/*! \brief Create a new array by applying a function to each element of an array
+ * 
+ * \param     f     Function to apply
+ * \param     vals  Values for which to apply the function
+ * \return          Mapped values
+ */
+template <typename T, size_t N> 
+std::array<T, N> apply(std::function<T(T)> f, const std::array<T, N> &vals) {
+  std::array<T, N> retval;
+  #pragma omp parallel for
+  for (size_t i = 0; i < N; ++i) retval[i] = f(vals[i]);
+  return retval;
 }
 
 /*! \brief Subtract two arrays
@@ -32,7 +48,8 @@ ostream &operator<<(ostream &os, array<T, N> a) {
 template <typename T, size_t N>
 auto operator-(const array<T, N> &a1, const array<T, N> &a2) {
   array<T, N> retval;
-  for (int i = 0; i < N; ++i)
+  #pragma omp parallel for
+  for (size_t i = 0; i < N; ++i)
     retval[i] = a1[i] - a2[i];
 
   return retval;
@@ -47,7 +64,8 @@ auto operator-(const array<T, N> &a1, const array<T, N> &a2) {
 template <typename T, size_t N>
 auto operator+(const array<T, N> &a1, const array<T, N> &a2) {
   array<T, N> retval;
-  for (int i = 0; i < N; ++i)
+  #pragma omp parallel for
+  for (size_t i = 0; i < N; ++i)
     retval[i] = a1[i] + a2[i];
 
   return retval;
@@ -62,6 +80,7 @@ auto operator+(const array<T, N> &a1, const array<T, N> &a2) {
 template <typename T, size_t N>
 auto dot(const array<T, N> &a1, const array<T, N> &a2) {
   T retval;
+  #pragma omp parallel for reduction(+:reval)
   for (int i = 0; i < N; ++i)
     retval += a1[i] * a2[i];
 

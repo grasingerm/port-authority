@@ -4,13 +4,31 @@
 #include <vector>
 #include <array>
 #include <random>
+#include <chrono>
+#include <functional>
+#include <limits>
 
 namespace pauth {
 
+static const double _default_kB = 1.0;
+static double (*_default_exp)(double) = std::exp;
+static unsigned _default_seed;
+
+// try using hardware entropy source, otherwise generator random seed with clock
+try {
+  _default_seed = std::random_device()(); // truly stochastic seed
+}
+catch (const std::exception &e) {
+  _default_seed = std::chrono::high_resolution_clock::now().time_since_epoch() 
+                  % std::numeric_limits<unsigned>::max();
+}
+
 template <size_t D> class metropolis {
 public:
-  metropolis<D>(const double delta_max, abstract_potential* pot, const double T,
-                const double kB = 1.0); 
+  metropolis<D>(const double delta_max, abstract_potential* pot, const double L,
+                const double T, const double kB = _default_kB, 
+                const unsigned seed = _default_seed, 
+                std::function<double(double)> fexp = _default_exp); 
 
   /*! \brief Get molecular positions
    *
@@ -60,11 +78,14 @@ private:
   double _T;
   double _beta;
   double _delta_max;
-  std::normal_distribution<double> _delta_dist;
+  std::uniform_real_distribution<double> _delta_dist;
+  std::uniform_real_distribution<double> _eps_dist;
+  std::uniform_int_distribution<size_t> _choice_dist;
   std::normal_distribution<double> _eps_dist;
   std::vector<abstract_potential*> _potentials;
-  std::<double, D> _edge_lengths;
+  std::array<double, D> _edge_lengths;
   double _V;
+  std::function<double(double)> _exp; // in-case we want to use a look-up table
 };
 
 } // namespace pauth

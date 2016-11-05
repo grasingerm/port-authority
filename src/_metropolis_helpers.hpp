@@ -2,6 +2,9 @@
 #define __METROPOLIS_HELPERS__
 
 #include <stdexcept>
+#include <string>
+
+using namespace std;
 
 // NOTE: this should only be used with positive values of e!
 constexpr _pow(const double base, const unsigned exponent) {
@@ -68,7 +71,43 @@ void _init_positions_lattice(arma::mat &positions, const size_t N,
     }
   }
 }
-  
+
+void _load_positions(const char *fname, arma::mat &positions, const size_t N,
+                     const size_t D) {
+  string line;
+  ifstream infile(fname, ifstream::in);
+
+  if (!infile.is_open())
+    throw invalid_argument(string("Could not open data file: ") +
+                           string(fname));
+
+  size_t n;
+  infile >> n;
+
+  if (n < N)
+    throw invalid_argument(
+        string("Data file: ") + string(fname) +
+        string("does not contain the enough molecules. "
+               "Expected: ") + to_string(N) + string(", found: ") + 
+               to_string(n)
+    );
+
+  getline(infile, line); // read-in newline
+  getline(infile, line); // comment line
+
+  size_t j = 0;
+
+  // read positions from file
+  while (!infile.iof() && j < n) {
+    for (size_t i = 0; i < D; ++i)
+      infile >> positions(i, j);
+    
+    ++j;
+  }
+
+  infile.close();
 }
+  
+} // namespace pauth
 
 #endif

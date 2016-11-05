@@ -16,8 +16,9 @@ using value_accessor = std::function<double(const metropolis &)>;
 using metric = std::function<double(const arma::vec&, const arma::vec&,
                                     const arma::vec&)>;
 using bc = std::function<void(metropolis &, const size_t, const arma::vec&)>;
+using acc = std::function<bool(const metropolis &, const double, const double)>;
 
-} // namespace mmd
+} // namespace pauth
 
 /*! \brief Helper function for printing the integer value of an enum class
  *

@@ -4,7 +4,7 @@
 #include "unordered_pair.hpp"
 #include <unordered_map>
 
-namespace mmd {
+namespace pauth {
 
 enum class molecular_id { Ar, Cu, Test, Test1, Test2 };
 using molecular_name_map = std::unordered_map<std::string, molecular_id>;

@@ -310,6 +310,6 @@ private:
   std::vector<double> fcoeffs;
 };
 
-} // namespace mmd
+} // namespace pauth
 
 #endif

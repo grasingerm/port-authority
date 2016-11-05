@@ -2,7 +2,7 @@
 #define __CALLBACKS_HPP__
 
 #include "mprof.hpp"
-#include "simulation.hpp"
+#include "metropolis.hpp"
 #include <armadillo>
 #include <fstream>
 #include <functional>
@@ -12,46 +12,36 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <limits>
+#include <map>
 
 /* TODO: can we create a callback that caches values, then callbacks that read
  *       the cache?
  */
 
-namespace mmd {
+namespace pauth {
 
 /*! \brief Wrapper for accessing molecular positions
  *
- * \param   sim   Simulation object
+ * \param   sim   metropolis object
  * \return        Molecular positions
  */
-inline const arma::mat &positions(const simulation &sim) {
-  return sim.get_positions();
+inline const arma::mat &positions(const metropolis &sim) {
+  return sim.positions();
 }
 
-/*! \brief Wrapper for accessing molecular velocities
+/*! \brief Wrapper for accessing current metropolis step
  *
- * \param   sim   Simulation object
- * \return        Molecular velocities
+ * \param   sim   metropolis object
+ * \return        Current step
  */
-inline const arma::mat &velocities(const simulation &sim) {
-  return sim.get_velocities();
-}
+inline double step(const metropolis &sim) { return sim.step(); }
 
-/*! \brief Wrapper for accessing intermolecular forces
- *
- * \param   sim   Simulation object
- * \return        Molecular forces
- */
-inline const arma::mat &forces(const simulation &sim) {
-  return sim.get_forces();
+static inline void _check_dstep(const unsigned dstep) {
+  if (dstep < 0)
+    throw std::invalid_argument("step between callbacks, dt, "
+                                "must be positive");
 }
-
-/*! \brief Wrapper for accessing current simulation time
- *
- * \param   sim   Simulation object
- * \return        Current time
- */
-inline double time(const simulation &sim) { return sim.get_time(); }
 
 /*! \brief Callback for saving xyz data to file
  */
@@ -60,26 +50,28 @@ public:
   /*! \brief Constructor for callback function that saves data in xyz format
    *
    * \param   fname       File name of the output file
-   * \param   dt          Frequency with which to write data
-   * \param   da          Function for accessing simulation data
+   * \param   dstep       Frequency with which to write data
+   * \param   da          Function for accessing metropolis data
    * \param   prepend_id  Flag, if true prepend each row with molecular id
    * \return          Callback function
    */
-  save_xyz_callback(const char *fname, const double dt, data_accessor da,
+  save_xyz_callback(const char *fname, const unsigned dstep, data_accessor da,
                     const bool prepend_id=true)
-      : fname(fname), outfile(fname), dt(dt), da(da), prepend_id(prepend_id) {}
+      : _fname(fname), _outfile(fname), _dstep(dstep), _da(da), 
+        _prepend_id(prepend_id) { _check_dstep(dstep); }
 
   /*! \brief Constructor for callback function that saves data in xyz format
    *
    * \param   fname       File name of the output file
-   * \param   dt          Frequency with which to write data
-   * \param   da          Function for accessing simulation data
+   * \param   dstep       Frequency with which to write data
+   * \param   da          Function for accessing metropolis data
    * \param   prepend_id  Flag, if true prepend each row with molecular id
    * \return          Callback function
    */
-  save_xyz_callback(const std::string &fname, const double dt, data_accessor da,
-                    const bool prepend_id=true)
-      : fname(fname), outfile(fname), dt(dt), da(da), prepend_id(prepend_id) {}
+  save_xyz_callback(const std::string &fname, const unsigned dstep, 
+                    data_accessor da, const bool prepend_id=true)
+      : _fname(fname), _outfile(fname), _dstep(dstep), _da(da), 
+        _prepend_id(prepend_id) { _check_dstep(dstep); }
 
   /*! \brief Copy constructor for callback function that saves data in xyz
    * format
@@ -88,146 +80,181 @@ public:
    * \return          Callback function
    */
   save_xyz_callback(const save_xyz_callback &cb)
-      : fname(cb.fname), outfile(cb.fname), dt(cb.dt), da(cb.da), 
-        prepend_id(cb.prepend_id) {}
+      : _fname(cb._fname), _outfile(cb._fname), _dstep(cb._dstep), _da(cb._da), 
+        _prepend_id(cb._prepend_id) {}
 
-  ~save_xyz_callback() { outfile.close(); }
+  ~save_xyz_callback() { _outfile.close(); }
 
-  void operator()(const simulation &);
+  void operator()(const metropolis &);
 
   /*! \brief Get filename of the output file
    *
    * \return    Filename of the output file
    */
-  inline const std::string &get_fname() const { return fname; }
+  inline const std::string &fname() const { return _fname; }
 
 private:
-  std::string fname;
-  std::ofstream outfile;
-  double dt;
-  data_accessor da;
-  bool prepend_id;
+  std::string _fname;
+  std::ofstream _outfile;
+  unsigned _dstep;
+  data_accessor _da;
+  bool _prepend_id;
 };
 
 /*! \brief Callback for saving data values to a delimited file
  */
-class save_values_with_time_callback {
+class save_values_with_step_callback {
 public:
   /*! \brief Constructor for callback function that saves delimited data
    *
    * \param   fname   File name of the output file
-   * \param   dt      Frequency with which to write data
-   * \param   vas     Functions for accessing simulation values
+   * \param   dstep   Frequency with which to write data
+   * \param   vas     Functions for accessing metropolis values
    * \param   delim   Character delimiter
    * \return          Callback function
    */
-  save_values_with_time_callback(
-      const char *fname, const double dt,
+  save_values_with_step_callback(
+      const char *fname, const unsigned dstep,
       const std::initializer_list<value_accessor> &vas, const char delim = ',')
-      : fname(fname), outfile(fname), dt(dt), vas(vas), delim(delim) {
-    if (dt < 0)
-      throw std::invalid_argument("Time between callbacks, dt, "
-                                  "must be positive");
-  }
+      : _fname(fname), _outfile(fname), _dstep(dstep), _vas(vas), _delim(delim)
+  { _check_dstep(dstep); }
 
   /*! \brief Constructor for callback function that saves delimited data
    *
    * \param   fname   File name of the output file
-   * \param   dt      Frequency with which to write data
-   * \param   vas     Functions for accessing simulation values
+   * \param   dstep   Frequency with which to write data
+   * \param   vas     Functions for accessing metropolis values
    * \param   delim   Character delimiter
    * \return          Callback function
    */
-  save_values_with_time_callback(
-      const std::string &fname, const double dt,
+  save_values_with_step_callback(
+      const std::string &fname, const unsigned dstep,
       const std::initializer_list<value_accessor> &vas, const char delim = ',')
-      : fname(fname), outfile(fname), dt(dt), vas(vas), delim(delim) {
-    if (dt < 0)
-      throw std::invalid_argument("Time between callbacks, dt, "
-                                  "must be positive");
-  }
+      : _fname(fname), _outfile(fname), _dstep(dstep), _vas(vas), _delim(delim)
+  { _check_dstep(dstep); }
 
   /*! \brief Copy constructor
    *
    * \param   cb      Callback function to copy
    * \return          Callback function
    */
-  save_values_with_time_callback(const save_values_with_time_callback &cb)
-      : fname(cb.fname), outfile(cb.fname), dt(cb.dt), vas(cb.vas),
-        delim(cb.delim) {}
+  save_values_with_step_callback(const save_values_with_step_callback &cb)
+      : _fname(cb._fname), _outfile(cb._fname), _dstep(cb._dstep), vas(cb._vas),
+        _delim(cb._delim) {}
 
-  ~save_values_with_time_callback() { outfile.close(); }
+  ~save_values_with_step_callback() { _outfile.close(); }
 
-  void operator()(const simulation &);
+  void operator()(const metropolis &);
 
   /*! \brief Get filename of the output file
    *
    * \return    Filename of the output file
    */
-  inline const std::string &get_fname() const { return fname; }
+  inline const std::string &fname() const { return _fname; }
 
 private:
-  std::string fname;
-  std::ofstream outfile;
-  double dt;
-  std::vector<value_accessor> vas;
-  char delim;
+  std::string _fname;
+  std::ofstream _outfile;
+  unsigned _dstep;
+  std::vector<value_accessor> _vas;
+  char _delim;
+};
+
+class average_callback {
+public:
+  /*! Callback for recording averages
+   * \param     va              Value accessor
+   * \param     dstep_record    Number of steps between recording a value
+   * \param     dstep_avg       Number of steps between averageing a value
+   */
+  average_callback(value_accessor va, const unsigned dstep_record = 1, 
+                   const unsigned dstep_avg = 
+                   std::numeric_limits<unsigned>::max()) 
+    : _sum(0.0), _nsamples(0), _dstep_record(dstep_record), 
+      _dstep_avg(dstep_avg), _va(va) {
+    _check_dstep(dstep_record);
+    _check_dstep(dstep_avg);
+  }
+
+  /*! Get averages
+   *
+   * \return    Averaging data
+   */
+  inline const auto &avgs() const { return _avgs; }
+
+  /*! Get current average
+   *
+   * \return    Current average
+   */
+  inline double current_avg() const { 
+    return _sum / static_cast<double>(_nsamples);
+  }
+  
+  void operator()(const metropolis &sim) {
+    if (sim.step() % _dstep_record == 0) {  
+      _sum += _va(sim);
+      ++_nsamples;
+    }
+    if (sim.step() % _dstep_avg == 0) _avgs[sim.step()] = current_avg();
+  }
+
+private:
+  long double _sum;
+  unsigned long _nsamples;
+  unsigned _dstep_record;
+  unsigned _dstep_avg;
+  value_accessor _va;
+  std::map<unsigned long, double> _avgs;
 };
 
 /*! \brief Callback for saving data values to a delimited file
  */
-template <size_t N> class save_vector_with_time_callback {
+template <size_t N> class save_vector_with_step_callback {
 public:
   /*! \brief Constructor for callback function that saves delimited data
    *
    * \param   fname   File name of the output file
-   * \param   dt      Frequency with which to write data
+   * \param   dstep   Frequency with which to write data
    * \param   ras     Row accessor
    * \param   delim   Character delimiter
    * \return          Callback function
    */
-  save_vector_with_time_callback<N>(
-      const char *fname, const double dt,
-      std::function<std::array<double, N>(const simulation&)> ras, 
+  save_vector_with_step_callback<N>(
+      const char *fname, const unsigned dstep,
+      std::function<std::array<double, N>(const metropolis&)> ras, 
       const char delim = ',')
-      : fname(fname), outfile(fname), dt(dt), ras(ras), delim(delim) {
-    if (dt < 0)
-      throw std::invalid_argument("Time between callbacks, dt, "
-                                  "must be positive");
-  }
+      : _fname(fname), _outfile(fname), _dstep(dstep), _ras(ras), _delim(delim) 
+  { _check_dstep(dstep); }
 
   /*! \brief Constructor for callback function that saves delimited data
    *
    * \param   fname   File name of the output file
-   * \param   dt      Frequency with which to write data
-   * \param   vas     Functions for accessing simulation values
+   * \param   dstep   Frequency with which to write data
+   * \param   vas     Functions for accessing metropolis values
    * \param   delim   Character delimiter
    * \return          Callback function
    */
-  save_vector_with_time_callback<N>(
-      const std::string &fname, const double dt,
-      std::function<std::array<double, N>(const simulation&)> ras, 
+  save_vector_with_step_callback<N>(
+      const std::string &fname, const unsigned dstep,
+      std::function<std::array<double, N>(const metropolis&)> ras, 
       const char delim = ',')
-      : fname(fname), outfile(fname), dt(dt), ras(ras), delim(delim) {
-    if (dt < 0)
-      throw std::invalid_argument("Time between callbacks, dt, "
-                                  "must be positive");
-  }
+      : _fname(fname), _outfile(fname), _dstep(dstep), _ras(ras), _delim(delim)
+  { _check_dstep(dstep); }
 
   /*! \brief Copy constructor
    *
    * \param   cb      Callback function to copy
    * \return          Callback function
    */
-  save_vector_with_time_callback<N>(const save_vector_with_time_callback<N> &cb)
-      : fname(cb.fname), outfile(cb.fname), dt(cb.dt), ras(cb.ras),
-        delim(cb.delim) {}
+  save_vector_with_step_callback<N>(const save_vector_with_step_callback<N> &cb)
+      : _fname(cb._fname), _outfile(cb._fname), _dstep(cb._dstep), _ras(cb._ras),
+        _delim(cb._delim) {}
 
-  ~save_vector_with_time_callback<N>() { outfile.close(); }
+  ~save_vector_with_step_callback<N>() { _outfile.close(); }
 
-  void operator()(const simulation &sim) {
-    if (fmod(sim.get_time(), dt) < sim.get_dt()) {
-      outfile << sim.get_time();
+  void operator()(const metropolis &sim) {
+    if (sim.step() % _dstep == 0) {
+      outfile << sim.step();
       const auto &values = ras(sim);
       for (const auto &value : values) outfile << delim << value;
       outfile << '\n';
@@ -238,224 +265,142 @@ public:
    *
    * \return    Filename of the output file
    */
-  inline const std::string &get_fname() const { return fname; }
+  inline const std::string &fname() const { return _fname; }
 
 private:
-  std::string fname;
-  std::ofstream outfile;
-  double dt;
-  std::function<std::array<double, N>(const simulation&)> ras;
-  char delim;
+  std::string _fname;
+  std::ofstream _outfile;
+  unsigned _dstep;
+  std::function<std::array<double, N>(const metropolis&)> _ras;
+  char _delim;
 };
-
-/*! Factory for constructing an energy and momentum saving callback
- *
- * \param   fname   File name of the output file
- * \param   dt      Frequency with which to write data
- * \param   delim   Character delimiter
- * \return          Callback function
- */
-inline save_values_with_time_callback
-save_energy_and_momentum_with_time_callback(const char *fname, const double dt,
-                                            const char delim = ',') {
-
-  return save_values_with_time_callback(
-      fname, dt, {potential_energy, kinetic_energy, total_energy,
-                  [](const simulation &sim) -> double {
-                    return arma::norm(momentum(sim), 2);
-                  }},
-      delim);
-}
-
-/*! Factory for constructing an energy and momentum saving callback
- *
- * \param   fname   File name of the output file
- * \param   dt      Frequency with which to write data
- * \param   delim   Character delimiter
- * \return          Callback function
- */
-inline save_values_with_time_callback
-save_energy_and_momentum_with_time_callback(const std::string &fname,
-                                            const double dt,
-                                            const char delim = ',') {
-
-  return save_values_with_time_callback(
-      fname, dt, {potential_energy, kinetic_energy, total_energy,
-                  [](const simulation &sim) -> double {
-                    return arma::norm(momentum(sim), 2);
-                  }},
-      delim);
-}
 
 /*! \brief Callback for printing data values to a delimited file
  */
-class print_values_with_time_callback {
+class print_values_with_step_callback {
 public:
   /*! \brief Constructor for callback function that prints data
    *
    * \param   ostr    Output stream
-   * \param   dt      Frequency with which to write data
-   * \param   vas     Functions for accessing simulation values
+   * \param   dstep   Frequency with which to write data
+   * \param   vas     Functions for accessing metropolis values
    * \param   delim   Character delimiter
    * \return          Callback function
    */
-  print_values_with_time_callback(
-      std::ostream &ostr, const double dt,
+  print_values_with_step_callback(
+      std::ostream &ostr, const unsigned dstep,
       const std::initializer_list<value_accessor> &vas, const char delim = ',')
-      : ostr(ostr), dt(dt), vas(vas), delim(delim) {
-    if (dt < 0)
-      throw std::invalid_argument("Time between callbacks, dt, "
-                                  "must be positive");
-  }
+      : _ostr(ostr), _dstep(dstep), _vas(vas), _delim(delim)
+  { _check_dstep(dstep); }
 
   /*! \brief Constructor for callback function that prints data
    *
    * \param   ostr    Output stream
-   * \param   dt      Frequency with which to write data
-   * \param   vas     Functions for accessing simulation values
+   * \param   dstep   Frequency with which to write data
+   * \param   vas     Functions for accessing metropolis values
    * \param   delim   Character delimiter
    * \return          Callback function
    */
-  print_values_with_time_callback(
-      const double dt, const std::initializer_list<value_accessor> &vas,
+  print_values_with_step_callback(
+      const unsigned dstep, const std::initializer_list<value_accessor> &vas,
       const char delim = ' ')
-      : ostr(std::cout), dt(dt), vas(vas), delim(delim) {
-    if (dt < 0)
-      throw std::invalid_argument("Time between callbacks, dt, "
-                                  "must be positive");
-  }
+      : _ostr(std::cout), _dstep(dstep), _vas(vas), _delim(delim) 
+  { _check_dstep(dstep); }
 
   /*! \brief Copy constructor
    *
    * \param   cb      Callback function to copy
    * \return          Callback function
    */
-  print_values_with_time_callback(const print_values_with_time_callback &cb)
-      : ostr(cb.ostr), dt(cb.dt), vas(cb.vas), delim(cb.delim) {}
+  print_values_with_step_callback(const print_values_with_step_callback &cb)
+      : _ostr(cb._ostr), _dstep(cb._dstep), _vas(cb._vas), _delim(cb._delim) {}
 
-  ~print_values_with_time_callback() {}
+  ~print_values_with_step_callback() {}
 
-  void operator()(const simulation &);
+  void operator()(const metropolis &);
 
 private:
-  std::ostream &ostr;
-  double dt;
-  std::vector<value_accessor> vas;
-  char delim;
+  std::ostream &_ostr;
+  unsigned _dstep;
+  std::vector<value_accessor> _vas;
+  char _delim;
 };
-
-/*! Factory for constructing an energy and momentum printing callback
- *
- * \param   dt      Frequency with which to write data
- * \param   delim   Character delimiter
- * \return          Callback function
- */
-inline print_values_with_time_callback
-print_energy_and_momentum_with_time_callback(const double dt,
-                                             const char delim = ' ') {
-
-  return print_values_with_time_callback(
-      std::cout, dt, {potential_energy, kinetic_energy, total_energy,
-                      [](const simulation &sim) -> double {
-                        return arma::norm(momentum(sim), 2);
-                      }},
-      delim);
-}
 
 /*! \brief Callback for printing data values to a delimited file
  */
-template <size_t N> class print_vector_with_time_callback {
+template <size_t N> class print_vector_with_step_callback {
 public:
   /*! \brief Constructor for callback function that prints data
    *
    * \param   ostr    Output stream
-   * \param   dt      Frequency with which to write data
+   * \param   dstep   Frequency with which to write data
    * \param   ras     Row accessor
    * \param   delim   Character delimiter
    * \return          Callback function
    */
-  print_vector_with_time_callback<N>(
-      std::ostream &ostr, const double dt,
-      std::function<std::array<double, N>(const simulation&)> ras, 
+  print_vector_with_step_callback<N>(
+      std::ostream &ostr, const unsigned dstep,
+      std::function<std::array<double, N>(const metropolis&)> ras, 
       const char delim = ',')
-      : ostr(ostr), dt(dt), ras(ras), delim(delim) {
-    if (dt < 0)
-      throw std::invalid_argument("Time between callbacks, dt, "
-                                  "must be positive");
-  }
+      : _ostr(ostr), _dstep(dstep), _ras(ras), _delim(delim)
+  { _check_dstep(dstep); }
 
-  ~print_vector_with_time_callback<N>() {}
+  ~print_vector_with_step_callback<N>() {}
 
-  void operator()(const simulation &sim) {
-    if (fmod(sim.get_time(), dt) < sim.get_dt()) {
-      ostr << sim.get_time();
-      const auto &values = ras(sim);
-      for (const auto &value : values) ostr << delim << value;
+  void operator()(const metropolis &sim) {
+    if (sim.step() % _dstep == 0) {
+      ostr << sim.step();
+      const auto &values = _ras(sim);
+      for (const auto &value : values) ostr << _delim << value;
       ostr << '\n';
     }
   }
 
 private:
-  std::ostream &ostr;
-  double dt;
-  std::function<std::array<double, N>(const simulation&)> ras;
-  char delim;
+  std::ostream &_ostr;
+  unsigned _dstep;
+  std::function<std::array<double, N>(const metropolis&)> _ras;
+  char _delim;
 };
 
-/*! \brief Check conservation of energy
+/*! \brief Print current metropolis step
  *
- * \param   dt  Frequency with which to check energy
- * \param   eps Tolerance of check
- * \return      Callback
+ * \param   dstep   Frequency with which to print profiling information
+ * \param   msg     Message to print
+ * \return          Callback
  */
-callback check_energy(const double dt, const double eps = 1e-6);
+callback print_step(const unsigned dstep, const char *msg=""); 
 
-/*! \brief Check conservation of momentum
+/*! \brief Print step required to simulate dstep steps
  *
- * \param   dt  Frequency with which to check momentum
- * \param   eps Tolerance of check
- * \return      Callback
+ * \param   dstep  Frequency with which to print profiling information
+ * \return         Callback
  */
-callback check_momentum(const double dt, const double eps = 1e-6);
-
-/*! \brief Print current simulation time
- *
- * \param   dt   Frequency with which to print profiling information
- * \param   msg  Message to print
- * \return       Callback
- */
-callback print_time(const double dt, const char *msg=""); 
-
-/*! \brief Print time required to simulate dt time
- *
- * \param   dt  Frequency with which to print profiling information
- * \return      Callback
- */
-callback print_profile(const double dt);
+callback print_profile(const unsigned dstep);
 
 /*! \brief Outputs xyz data to an output stream in the xyz format
  *
  * \param   ostr        Output stream
  * \param   da          Data accessor for xyz data
- * \param   sim         Simulation object
+ * \param   sim         metropolis object
  * \param   prepend_id  Flag, if true prepend each row with molecular id
  */
-void output_xyz(std::ostream &ostr, data_accessor da, const simulation &sim,
+void output_xyz(std::ostream &ostr, data_accessor da, const metropolis &sim,
                 const bool prepend_id=true);
 
 /*! \brief Saves xyz data to a file in the xyz format
  *
  * \param   fname       Filename
  * \param   da          Data accessor for xyz data
- * \param   sim         Simulation object
+ * \param   sim         metropolis object
  * \param   prepend_id  Flag, if true prepend each row with molecular id
  */
 inline void save_xyz(const char *fname, data_accessor da, 
-                     const simulation &sim, const bool prepend_id=true) {
+                     const metropolis &sim, const bool prepend_id=true) {
   std::ofstream outfile(fname, std::ios::out);
   output_xyz(outfile, da, sim, prepend_id);
 }
 
-} // namespace mmd
+} // namespace dstep
 
 #endif

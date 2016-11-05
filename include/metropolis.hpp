@@ -10,6 +10,7 @@
 #include <armadillo>
 #include "molecular.hpp"
 #include "pauth_types.hpp"
+#include "acceptance.hpp"
 
 namespace pauth {
 
@@ -28,22 +29,70 @@ catch (const std::exception &e) {
 
 static metric _default_metric = periodic_euclidean;
 static bc _default_bc = periodic_bc;
+static acc _default_acc = metropolis_acc;
 
 class metropolis {
 public:
+  /*! \brief Constructor for a Markov chain Monte Carlo simulation
+   *
+   * \param     id          Molecular id of simulation molecules
+   * \param     N           Number of molecules
+   * \param     D           Number of dimensions 
+   * \param     L           Simulation box edge length
+   * \param     delta_max   Maximum move size
+   * \param     pot         Molecular potential
+   * \param     T           Simulation temperature
+   * \param     kB          Boltzmann's constant
+   * \param     m           Metric for measuring molecule-molecule distances
+   * \param     bc          Boundary conditions
+   * \param     seed        Seed for random number generator
+   * \param     acceptance  Determines whether a move is accepted for rejected
+   * \return                Markov chain Monte Carlo simulation object
+   */
   metropolis(const molecular_id id, const size_t N, const size_t D, 
              const double L, const double delta_max, 
              const abstract_potential* pot, const double T, 
              const double kB = _default_kB, 
              metric m = _default_metric, bc boundary = _default_bc,
              const unsigned seed = _default_seed, 
-             function<double(double)> fexp = _default_exp)
+             acc acceptance = _default_acc);
+
+  /*! \brief Constructor for a Markov chain Monte Carlo simulation
+   *
+   * \param     fname       Filename of initial molecular positions
+   * \param     id          Molecular id of simulation molecules
+   * \param     N           Number of molecules
+   * \param     D           Number of dimensions 
+   * \param     L           Simulation box edge length
+   * \param     delta_max   Maximum move size
+   * \param     pot         Molecular potential
+   * \param     T           Simulation temperature
+   * \param     kB          Boltzmann's constant
+   * \param     m           Metric for measuring molecule-molecule distances
+   * \param     bc          Boundary conditions
+   * \param     seed        Seed for random number generator
+   * \param     acceptance  Determines whether a move is accepted for rejected
+   * \return                Markov chain Monte Carlo simulation object
+   */
+  metropolis(const char *fname, const molecular_id id, const size_t N, 
+             const size_t D, const double L, const double delta_max, 
+             const abstract_potential* pot, const double T, 
+             const double kB = _default_kB, 
+             metric m = _default_metric, bc boundary = _default_bc,
+             const unsigned seed = _default_seed, 
+             acc acceptance = _default_acc);
 
   /*! \brief Get number of molecules
    *
    * \return      Number of molecules
    */
   inline auto N() { return _molecular_ids.size(); }
+
+  /*! \brief Get number of dimensions
+   *
+   * \return      Number of dimensions
+   */
+  inline auto D() { return _positions.n_rows; }
 
   /*! \brief Get molecular ids
    *
@@ -97,8 +146,38 @@ public:
    *
    * \param   cb    Callback function to add
    */
-  inline void add_callback(const callback cb) { callbacks.push_back(cb); }
-  
+  inline void add_parallel_callback(const callback cb) { 
+    _parallel_callbacks.push_back(cb); 
+  }
+
+  /*! \brief Add a callback function
+   *
+   * \param   cb    Callback function to add
+   */
+  inline void add_sequential_callback(const callback cb) { 
+    _sequential_callbacks.push_back(cb); 
+  }
+
+  /*! \brief Add a callback function to default container
+   *
+   * \param   cb    Callback function to add
+   */
+  inline void add_callback(const callback cb) { 
+    add_sequential_callback(cb); 
+  }
+
+  /*! \brief Get current step
+   *
+   * \return    Current step
+   */
+  inline auto step() { return _step; }
+
+  /*! \brief Run metropolis simulation
+   *
+   * \param   nsteps    Number of steps to simulate
+   */
+  void simulate(const long unsigned nsteps);
+
 private:
   std::vector<molecular_id> molecular_ids;
   arma::mat _positions;
@@ -115,8 +194,10 @@ private:
   std::uniform_real_distribution<double> _delta_dist;
   std::uniform_real_distribution<double> _eps_dist;
   std::uniform_int_distribution<size_t> _choice_dist;
-  std::function<double(double)> _exp; // in-case we want to use a look-up table
-  std::vector<callback> _callbacks;
+  std::function<bool(const double, const double)> _acc;
+  std::vector<callback> _parallel_callbacks;
+  std::vector<callback> _sequential_callbacks;
+  long unsigned _step;
 };
 
 } // namespace pauth

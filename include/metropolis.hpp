@@ -7,6 +7,9 @@
 #include <chrono>
 #include <functional>
 #include <limits>
+#include <armadillo>
+#include "molecular.hpp"
+#include "pauth_types.hpp"
 
 namespace pauth {
 
@@ -23,12 +26,30 @@ catch (const std::exception &e) {
                   % std::numeric_limits<unsigned>::max();
 }
 
-template <size_t D> class metropolis {
+static metric _default_metric = periodic_euclidean;
+static bc _default_bc = periodic_bc;
+
+class metropolis {
 public:
-  metropolis<D>(const double delta_max, abstract_potential* pot, const double L,
-                const double T, const double kB = _default_kB, 
-                const unsigned seed = _default_seed, 
-                std::function<double(double)> fexp = _default_exp); 
+  metropolis(const molecular_id id, const size_t N, const size_t D, 
+             const double L, const double delta_max, 
+             const abstract_potential* pot, const double T, 
+             const double kB = _default_kB, 
+             metric m = _default_metric, bc boundary = _default_bc,
+             const unsigned seed = _default_seed, 
+             function<double(double)> fexp = _default_exp)
+
+  /*! \brief Get number of molecules
+   *
+   * \return      Number of molecules
+   */
+  inline auto N() { return _molecular_ids.size(); }
+
+  /*! \brief Get molecular ids
+   *
+   * \return      Container of molecular ids
+   */
+  inline auto molecular_ids() { return _molecular_ids; }
 
   /*! \brief Get molecular positions
    *
@@ -72,20 +93,30 @@ public:
    */
   inline auto V() const { return _V; }
 
+  /*! \brief Add a callback function
+   *
+   * \param   cb    Callback function to add
+   */
+  inline void add_callback(const callback cb) { callbacks.push_back(cb); }
+  
 private:
-  std::vector<std::array<double, D>> _positions;
-  double _kB;
-  double _T;
-  double _beta;
+  std::vector<molecular_id> molecular_ids;
+  arma::mat _positions;
+  arma::vec _edge_lengths;
+  double _V;
   double _delta_max;
+  std::vector<abstract_potential*> _potentials;
+  double _T;
+  double _kB;
+  double _beta;
+  metric _dist;
+  bc _bc;
+  std::default_random_engine _rng;
   std::uniform_real_distribution<double> _delta_dist;
   std::uniform_real_distribution<double> _eps_dist;
   std::uniform_int_distribution<size_t> _choice_dist;
-  std::normal_distribution<double> _eps_dist;
-  std::vector<abstract_potential*> _potentials;
-  std::array<double, D> _edge_lengths;
-  double _V;
   std::function<double(double)> _exp; // in-case we want to use a look-up table
+  std::vector<callback> _callbacks;
 };
 
 } // namespace pauth

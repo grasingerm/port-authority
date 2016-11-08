@@ -14,6 +14,7 @@
 #include <array>
 #include <limits>
 #include <map>
+#include <iomanip>
 
 /* TODO: can we create a callback that caches values, then callbacks that read
  *       the cache?
@@ -37,12 +38,6 @@ inline const arma::mat &positions(const metropolis &sim) {
  */
 inline double step(const metropolis &sim) { return sim.step(); }
 
-static inline void _check_dstep(const unsigned dstep) {
-  if (dstep < 0)
-    throw std::invalid_argument("step between callbacks, dt, "
-                                "must be positive");
-}
-
 /*! \brief Callback for saving xyz data to file
  */
 class save_xyz_callback {
@@ -58,7 +53,7 @@ public:
   save_xyz_callback(const char *fname, const unsigned dstep, data_accessor da,
                     const bool prepend_id=true)
       : _fname(fname), _outfile(fname), _dstep(dstep), _da(da), 
-        _prepend_id(prepend_id) { _check_dstep(dstep); }
+        _prepend_id(prepend_id) {}
 
   /*! \brief Constructor for callback function that saves data in xyz format
    *
@@ -71,7 +66,7 @@ public:
   save_xyz_callback(const std::string &fname, const unsigned dstep, 
                     data_accessor da, const bool prepend_id=true)
       : _fname(fname), _outfile(fname), _dstep(dstep), _da(da), 
-        _prepend_id(prepend_id) { _check_dstep(dstep); }
+        _prepend_id(prepend_id) {}
 
   /*! \brief Copy constructor for callback function that saves data in xyz
    * format
@@ -117,7 +112,7 @@ public:
       const char *fname, const unsigned dstep,
       const std::initializer_list<value_accessor> &vas, const char delim = ',')
       : _fname(fname), _outfile(fname), _dstep(dstep), _vas(vas), _delim(delim)
-  { _check_dstep(dstep); }
+  {}
 
   /*! \brief Constructor for callback function that saves delimited data
    *
@@ -131,7 +126,7 @@ public:
       const std::string &fname, const unsigned dstep,
       const std::initializer_list<value_accessor> &vas, const char delim = ',')
       : _fname(fname), _outfile(fname), _dstep(dstep), _vas(vas), _delim(delim)
-  { _check_dstep(dstep); }
+  {}
 
   /*! \brief Copy constructor
    *
@@ -139,7 +134,7 @@ public:
    * \return          Callback function
    */
   save_values_with_step_callback(const save_values_with_step_callback &cb)
-      : _fname(cb._fname), _outfile(cb._fname), _dstep(cb._dstep), vas(cb._vas),
+      : _fname(cb._fname), _outfile(cb._fname), _dstep(cb._dstep), _vas(cb._vas),
         _delim(cb._delim) {}
 
   ~save_values_with_step_callback() { _outfile.close(); }
@@ -171,10 +166,7 @@ public:
                    const unsigned dstep_avg = 
                    std::numeric_limits<unsigned>::max()) 
     : _sum(0.0), _nsamples(0), _dstep_record(dstep_record), 
-      _dstep_avg(dstep_avg), _va(va) {
-    _check_dstep(dstep_record);
-    _check_dstep(dstep_avg);
-  }
+      _dstep_avg(dstep_avg), _va(va) {}
 
   /*! Get averages
    *
@@ -224,7 +216,7 @@ public:
       std::function<std::array<double, N>(const metropolis&)> ras, 
       const char delim = ',')
       : _fname(fname), _outfile(fname), _dstep(dstep), _ras(ras), _delim(delim) 
-  { _check_dstep(dstep); }
+  {}
 
   /*! \brief Constructor for callback function that saves delimited data
    *
@@ -239,7 +231,7 @@ public:
       std::function<std::array<double, N>(const metropolis&)> ras, 
       const char delim = ',')
       : _fname(fname), _outfile(fname), _dstep(dstep), _ras(ras), _delim(delim)
-  { _check_dstep(dstep); }
+  {}
 
   /*! \brief Copy constructor
    *
@@ -254,10 +246,10 @@ public:
 
   void operator()(const metropolis &sim) {
     if (sim.step() % _dstep == 0) {
-      outfile << sim.step();
-      const auto &values = ras(sim);
-      for (const auto &value : values) outfile << delim << value;
-      outfile << '\n';
+      _outfile << sim.step();
+      const auto &values = _ras(sim);
+      for (const auto &value : values) _outfile << _delim << value;
+      _outfile << '\n';
     }
   }
 
@@ -291,7 +283,7 @@ public:
       std::ostream &ostr, const unsigned dstep,
       const std::initializer_list<value_accessor> &vas, const char delim = ',')
       : _ostr(ostr), _dstep(dstep), _vas(vas), _delim(delim)
-  { _check_dstep(dstep); }
+  {}
 
   /*! \brief Constructor for callback function that prints data
    *
@@ -305,7 +297,7 @@ public:
       const unsigned dstep, const std::initializer_list<value_accessor> &vas,
       const char delim = ' ')
       : _ostr(std::cout), _dstep(dstep), _vas(vas), _delim(delim) 
-  { _check_dstep(dstep); }
+  {}
 
   /*! \brief Copy constructor
    *
@@ -343,16 +335,16 @@ public:
       std::function<std::array<double, N>(const metropolis&)> ras, 
       const char delim = ',')
       : _ostr(ostr), _dstep(dstep), _ras(ras), _delim(delim)
-  { _check_dstep(dstep); }
+  {}
 
   ~print_vector_with_step_callback<N>() {}
 
   void operator()(const metropolis &sim) {
     if (sim.step() % _dstep == 0) {
-      ostr << sim.step();
+      _ostr << sim.step();
       const auto &values = _ras(sim);
-      for (const auto &value : values) ostr << _delim << value;
-      ostr << '\n';
+      for (const auto &value : values) _ostr << _delim << value;
+      _ostr << '\n';
     }
   }
 
@@ -399,6 +391,50 @@ inline void save_xyz(const char *fname, data_accessor da,
                      const metropolis &sim, const bool prepend_id=true) {
   std::ofstream outfile(fname, std::ios::out);
   output_xyz(outfile, da, sim, prepend_id);
+}
+
+const static unsigned _w = 7; //!< to be used in print_trajectory_callback
+const static unsigned _p = 3; //!< to be used in print_trajectory_callback
+
+/*! \brief Print molecule trajectories and diagnostic information
+ *
+ * \param   dstep         Frequency with which to print trajectory information
+ * \param   ostr          Output stream
+ * \param   print_header  Print header for tabulated trajectory values
+ * \return                Callback for printing trajectories
+ */
+auto print_trajectory_callback(const unsigned dstep = 1, 
+                               std::ostream &ostr = std::cout,
+                               const bool print_header = true) {
+  if (dstep < 1) throw std::invalid_argument(std::string("Frequency with which "
+                 "to print trajectory information must be positive. ") + 
+                 std::to_string(dstep) + std::string(" is not positive.")); 
+
+  if (print_header)
+    ostr << std::setw(3*_w) << 'x' << ' ' 
+         << std::setw(3*_w) << "dx" << ' '
+         << std::setw(_w) << "dU" << ' '
+         << std::setw(_w) << "eps" << ' '
+         << std::setw(_w) << "accept" << ' '
+         << '\n';
+  
+  return [dstep, &ostr](const metropolis &sim) -> void {
+    if (sim.step() % dstep == 0) {
+      size_t i;
+      for (i = 0; i < sim.D(); ++i) 
+        ostr << std::setw(_w) << std::setprecision(_p) << sim.positions()(i, sim.choice()) << ' ';
+      if (i < 3) ostr << std::setw((3 - i)*_w) << ' ';
+
+      for (i = 0; i < sim.D(); ++i) 
+        ostr << std::setw(_w) << std::setprecision(_p) << sim.positions()(i, sim.choice()) << ' ';
+      if (i < 3) ostr << std::setw((3 - i)*_w) << ' ';
+
+      ostr << std::setw(_w) << std::setprecision(_p) << sim.dU() << ' '
+           << std::setw(_w) << std::setprecision(_p) << sim.eps() << ' '
+           << std::setw(_w) << std::setprecision(_p) << sim.accepted() << ' '
+           << '\n';
+    }
+  };
 }
 
 } // namespace dstep

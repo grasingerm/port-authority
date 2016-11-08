@@ -15,12 +15,7 @@ namespace pauth {
  * \param     eps     Random number to determine acceptance
  * \return            Answer to: do we accept this move?
  */
-bool metropolis_acc(const metropolis &sim, const double dU, const double eps) {
-  if (dU <= 0) return true;
-  else {
-    return (eps <= exp(-sim.beta() * dU));
-  }
-}
+bool metropolis_acc(const metropolis &sim, const double dU, const double eps);
 
 /*! \brief Decide to accept or reject move using Kawasaki acceptance criteria
  *
@@ -29,12 +24,8 @@ bool metropolis_acc(const metropolis &sim, const double dU, const double eps) {
  * \param     eps     Random number to determine acceptance
  * \return            Answer to: do we accept this move?
  */
-inline bool kawasaki_acc(const metropolis &sim, const double dU, 
-                         const double eps) {
-  const double enbdu = exp(-sim.beta() * dU / 2);
-  const double epbdu = exp(sim.beta() * dU / 2);
-  return ( eps <= (enbdu / (enbdu + epbdu)) );
-}
+bool kawasaki_acc(const metropolis &sim, const double dU, 
+                  const double eps); 
 
 }
 

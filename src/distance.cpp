@@ -9,7 +9,7 @@ double periodic_euclidean(const arma::vec &r_i, const arma::vec &r_j,
   double rij2 = 0;
 
   #pragma omp parallel for reduction(+:rij2)
-  for (auto k = size_t{0}; k < positions.n_rows; ++k) {
+  for (auto k = size_t{0}; k < r_i.n_rows; ++k) {
     double rijk = r_i(k) - r_j(k);
 
     /* correct for periodic boundary conditions using nearest image convention

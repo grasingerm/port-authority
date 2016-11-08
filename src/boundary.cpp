@@ -1,4 +1,5 @@
 #include "boundary.hpp"
+#include "metropolis.hpp"
 
 namespace pauth {
 
@@ -10,7 +11,7 @@ void wall_bc(metropolis &sim, const size_t j, arma::vec &dx) {
   bool wall_hit = false;
   for (size_t i = 0; i < dim; ++i) {
     dx(i) += sim.positions()(i, j);
-    if (x_prime >= edge_lengths(i)) {
+    if (dx(i) >= edge_lengths(i)) {
       wall_hit = true;
       break;
     }
@@ -27,6 +28,10 @@ void periodic_bc(metropolis &sim, const size_t j, arma::vec &dx) {
     else if(dx(i) < 0.0) dx(i) += edge_lengths(i);
   }
   sim.positions().col(j) = dx;
+}
+
+void no_bc(metropolis &sim, const size_t j, arma::vec &dx) {
+  sim.positions().col(j) += dx;
 }
 
 } // namespace mmd

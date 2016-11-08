@@ -2,10 +2,9 @@
 #define __BOUNDARY_HPP__
 
 #include <armadillo>
+#include "pauth_types.hpp"
 
 namespace pauth {
-
-class metropolis;
 
 /*! Wall boundary condition
  *
@@ -29,9 +28,7 @@ void periodic_bc(metropolis &sim, const size_t j, arma::vec &dx);
  * \param     j       Index of molecule to move
  * \param     dx      Distance to move
  */
-inline void no_bc(metropolis &sim, const size_t j, arma::vec &dx) {
-  sim.positions().col(j) += dx;
-}
+void no_bc(metropolis &sim, const size_t j, arma::vec &dx);
 
 } // namespace pauth
 

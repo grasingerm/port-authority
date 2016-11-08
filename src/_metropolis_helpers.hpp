@@ -6,8 +6,10 @@
 
 using namespace std;
 
+namespace pauth {
+
 // NOTE: this should only be used with positive values of e!
-constexpr _pow(const double base, const unsigned exponent) {
+constexpr double _pow(const double base, const unsigned exponent) {
   return (exponent < 1) ? 1.0 : base * _pow(base, exponent - 1);
 }
 
@@ -18,7 +20,7 @@ void _init_positions_lattice(arma::mat &positions, const size_t N,
 
   switch(D) {
     case 1: {
-      const double dl = ls[0] / N;
+      const double dl = ls(0) / N;
       #pragma omp parallel for
       for (size_t i = 0; i < N; ++i) 
         positions(0, i) = dl / 2.0 + dl * i;
@@ -27,7 +29,7 @@ void _init_positions_lattice(arma::mat &positions, const size_t N,
     }
     case 2: {
       const size_t n = std::floor(std::pow(N, 0.5));
-      const auto dls = ls / n;
+      const arma::vec dls = ls / n;
       arma::vec xs(2);
       size_t idx = 0;
 
@@ -45,7 +47,7 @@ void _init_positions_lattice(arma::mat &positions, const size_t N,
     }
     case 3: {
       const size_t n = std::floor(std::pow(N, 1.0 / 3.0));
-      const auto dls = ls / n;
+      const arma::vec dls = ls / n;
       arma::vec xs(3);
       size_t idx = 0;
 
@@ -58,7 +60,7 @@ void _init_positions_lattice(arma::mat &positions, const size_t N,
             positions.col(idx) = xs;
             xs(2) += dls(2);
           }
-          xs(1) = += dls(1);
+          xs(1) += dls(1);
         }
         xs(0) += dls(0);
       }
@@ -98,7 +100,7 @@ void _load_positions(const char *fname, arma::mat &positions, const size_t N,
   size_t j = 0;
 
   // read positions from file
-  while (!infile.iof() && j < n) {
+  while (!infile.eof() && j < n) {
     for (size_t i = 0; i < D; ++i)
       infile >> positions(i, j);
     

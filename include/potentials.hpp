@@ -4,6 +4,8 @@
 #include <initializer_list>
 #include <stdexcept>
 #include <vector>
+#include <armadillo>
+#include "pauth_types.hpp"
 
 namespace pauth {
 
@@ -47,8 +49,8 @@ public:
 
 private:
   virtual double _U(const metropolis &sim) const = 0;
-  virtual void _delta_U(const metropolis &sim, const size_t j, 
-                        arma::vec &dx) const = 0;
+  virtual double _delta_U(const metropolis &sim, const size_t j, 
+                          arma::vec &dx) const = 0;
 };
 
 /*! Public interface for a 6-12 Lennard-Jones pairwise potential
@@ -81,8 +83,8 @@ public:
 
 private:
   virtual double _U(const metropolis &sim) const;
-  virtual void _delta_U(const metropolis &sim, const size_t j, 
-                        arma::vec &dx) const;
+  virtual double _delta_U(const metropolis &sim, const size_t j, 
+                          arma::vec &dx) const;
   virtual double _get_well_depth(const molecular_id,
                                  const molecular_id) const = 0;
   virtual double _get_rzero(const molecular_id, const molecular_id) const = 0;
@@ -153,8 +155,8 @@ public:
 
 private:
   virtual double _U(const metropolis &sim) const;
-  virtual void _delta_U(const metropolis &sim, const size_t j, 
-                        arma::vec &dx) const;
+  virtual double _delta_U(const metropolis &sim, const size_t j, 
+                          arma::vec &dx) const;
   virtual double _get_well_depth(const molecular_id,
                                  const molecular_id) const = 0;
   virtual double _get_rzero(const molecular_id, const molecular_id) const = 0;
@@ -219,8 +221,8 @@ public:
 
 private:
   virtual double _U(const metropolis &sim) const;
-  virtual void _delta_U(const metropolis &sim, const size_t j, 
-                        arma::vec &dx) const;
+  virtual double  _delta_U(const metropolis &sim, const size_t j, 
+                           arma::vec &dx) const;
 
   virtual double _get_k(molecular_id) const = 0;
 };
@@ -274,8 +276,8 @@ public:
 
 private:
   virtual double _U(const metropolis &sim) const;
-  virtual void _delta_U(const metropolis &sim, const size_t j, 
-                        arma::vec &dx) const;
+  virtual double _delta_U(const metropolis &sim, const size_t j, 
+                          arma::vec &dx) const;
 
   double a;
   double b;
@@ -303,8 +305,8 @@ public:
 
 private:
   virtual double _U(const metropolis &sim) const;
-  virtual void _delta_U(const metropolis &sim, const size_t j, 
-                        arma::vec &dx) const;
+  virtual double _delta_U(const metropolis &sim, const size_t j, 
+                          arma::vec &dx) const;
 
   std::vector<double> pcoeffs;
   std::vector<double> fcoeffs;

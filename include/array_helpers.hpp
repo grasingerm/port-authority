@@ -80,7 +80,7 @@ auto operator+(const array<T, N> &a1, const array<T, N> &a2) {
 template <typename T, size_t N>
 auto dot(const array<T, N> &a1, const array<T, N> &a2) {
   T retval;
-  #pragma omp parallel for reduction(+:reval)
+  #pragma omp parallel for reduction(+:retval)
   for (int i = 0; i < N; ++i)
     retval += a1[i] * a2[i];
 
@@ -92,7 +92,7 @@ auto dot(const array<T, N> &a1, const array<T, N> &a2) {
  * param a Array of components
  * \return Eucliden length of vector
  */
-inline template <typename T, size_t N> auto mag(const array<T, N> &a) {
+template <typename T, size_t N> auto mag(const array<T, N> &a) {
   return sqrt(dot(a, a));
 }
 

@@ -53,7 +53,7 @@ metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
 void metropolis::simulate(const long unsigned nsteps) {
 
   // Process initial conditions
-  #pragma omp parallel for
+  #pragma omp parallel for schedule(dynamic)
   for (auto cb_iter = _parallel_callbacks.cbegin(); 
        cb_iter < _parallel_callbacks.cend(); ++cb_iter) (*cb_iter)(*this);
   
@@ -67,7 +67,7 @@ void metropolis::simulate(const long unsigned nsteps) {
 
     // calculate change in energy
     double dU = 0.0;
-    #pragma omp parallel for reduction(+:dU)
+    #pragma omp parallel for reduction(+:dU) schedule(dynamic)
     for (auto pot_iter = _potentials.cbegin(); pot_iter < _potentials.cend();
          ++pot_iter)
       dU += (*pot_iter)->delta_U(*this, _choice, _dx);
@@ -81,7 +81,7 @@ void metropolis::simulate(const long unsigned nsteps) {
     if (_accepted) _bc(*this, _choice, _dx);
 
     // post-processing and processing
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (auto cb_iter = _parallel_callbacks.cbegin(); 
          cb_iter < _parallel_callbacks.cend(); ++cb_iter) (*cb_iter)(*this);
     

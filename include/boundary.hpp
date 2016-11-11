@@ -12,7 +12,7 @@ namespace pauth {
  * \param     j       Index of molecule to move
  * \param     dx      Distance to move
  */
-void wall_bc(metropolis &sim, const size_t j, arma::vec &dx);
+bc_ret wall_bc(metropolis &sim, const size_t j, arma::vec &dx);
 
 /*! Periodic boundary condition
  *
@@ -20,7 +20,7 @@ void wall_bc(metropolis &sim, const size_t j, arma::vec &dx);
  * \param     j       Index of molecule to move
  * \param     dx      Distance to move
  */
-void periodic_bc(metropolis &sim, const size_t j, arma::vec &dx);
+bc_ret periodic_bc(metropolis &sim, const size_t j, arma::vec &dx);
 
 /*! No boundaries boundary condition
  *
@@ -28,7 +28,7 @@ void periodic_bc(metropolis &sim, const size_t j, arma::vec &dx);
  * \param     j       Index of molecule to move
  * \param     dx      Distance to move
  */
-void no_bc(metropolis &sim, const size_t j, arma::vec &dx);
+bc_ret no_bc(metropolis &sim, const size_t j, arma::vec &dx);
 
 } // namespace pauth
 

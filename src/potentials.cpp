@@ -35,12 +35,11 @@ double abstract_LJ_potential::_U(const metropolis &sim) const {
 }
 
 double abstract_LJ_potential::_delta_U(const metropolis &sim, const size_t j,
-                                       arma::vec &dx) const {
+                                       arma::vec &rn_j) const {
   
   const auto &molecular_ids = sim.molecular_ids();
   const auto &positions = sim.positions();
   const auto &ro_j = positions.col(j);
-  const auto rn_j = ro_j + dx;
   const auto &edge_lengths = sim.edge_lengths();
   const auto N = sim.N();
   double dU = 0;
@@ -110,12 +109,11 @@ double abstract_LJ_cutoff_potential::_U(const metropolis &sim) const {
 
 double abstract_LJ_cutoff_potential::_delta_U(const metropolis &sim, 
                                               const size_t j,
-                                              arma::vec &dx) const {
+                                              arma::vec &rn_j) const {
   
   const auto &molecular_ids = sim.molecular_ids();
   const auto &positions = sim.positions();
   const auto &ro_j = positions.col(j);
-  const auto rn_j = ro_j + dx;
   const auto &edge_lengths = sim.edge_lengths();
   const auto N = sim.N();
   double dU = 0;
@@ -179,9 +177,8 @@ double abstract_spring_potential::_U(const metropolis &sim) const {
 
 double abstract_spring_potential::_delta_U(const metropolis &sim,
                                            const size_t j,
-                                           arma::vec &dx) const {
+                                           arma::vec &rn_j) const {
   const arma::vec &ro_j = sim.positions().col(j);
-  const auto rn_j = ro_j + dx;
   return 0.5 * get_k(sim.molecular_ids()[j]) * 
          (dot(rn_j, rn_j) - dot(ro_j, ro_j));
 }
@@ -218,9 +215,8 @@ double const_poly_spring_potential::_U(const metropolis &sim) const {
 
 double const_poly_spring_potential::_delta_U(const metropolis &sim,
                                              const size_t j,
-                                             arma::vec &dx) const {
+                                             arma::vec &rn_j) const {
   const arma::vec &ro_j = sim.positions().col(j);
-  const auto rn_j = ro_j + dx;
 
   double Uo = 0.0;
   double r2 = dot(ro_j, ro_j);
@@ -232,7 +228,7 @@ double const_poly_spring_potential::_delta_U(const metropolis &sim,
   }
 
   double Un = 0.0;
-  r2 = dot(ro_j, ro_j);
+  r2 = dot(rn_j, rn_j);
   for (auto p = size_t{0}; p < pcoeffs.size(); ++p) {
     double x = 1;
     for (auto k = size_t{0}; k < p; ++k)
@@ -260,9 +256,8 @@ double const_quad_spring_potential::_U(const metropolis &sim) const {
 
 double const_quad_spring_potential::_delta_U(const metropolis &sim,
                                              const size_t j,
-                                             arma::vec &dx) const {
+                                             arma::vec &rn_j) const {
   const arma::vec &ro_j = sim.positions().col(j);
-  const auto rn_j = ro_j + dx;
   const double r2o = dot(ro_j, ro_j);
   const double r2n = dot(rn_j, rn_j);
 
@@ -278,16 +273,14 @@ double twostate_int_potential::_U(const metropolis &sim) const {
 
   #pragma omp parallel for reduction(+:potential)
   for (auto i = size_t{0}; i < N; ++i) {
-    assert(static_cast<unsigned>(positions(0, i)) == 0 ||
-           static_cast<unsigned>(positions(0, i)) == 1);
-    potential += (static_cast<unsigned>(positions(0, i) == 0)) ? _gamma : _mu;
+    assert(_check_x(positions.col(i)));
+    potential += _Ui(positions.col(i));
   }
 
   #pragma omp parallel for reduction(+:potential)
   for (auto i = size_t{0}; i < N; ++i) {
     for (auto j = size_t{i+1}; j < N; ++j) {
-      potential += (static_cast<unsigned>(positions(0, i) == 0)) ? _gamma : _mu *
-                   (static_cast<unsigned>(positions(0, i) == 0)) ? _gamma : _mu;
+      potential += _Ui(positions.col(i)) * _Ui(positions.col(j));
     }
   }
 
@@ -295,20 +288,28 @@ double twostate_int_potential::_U(const metropolis &sim) const {
 }
 
 double twostate_int_potential::_delta_U(const metropolis &sim, const size_t j,
-                                        arma::vec &) const {
+                                        arma::vec &rn_j) const {
 
   const auto N = sim.N();
   const auto &positions = sim.positions();
-  const double dU0 = (static_cast<unsigned>(positions(0, j)) == 0) ? _mu - _gamma :
-                                                                     _gamma - _mu;
-  double dU = 0.0;
+  double Ui = 0.0;
 
-  for (size_t i = 0; i < N; ++i) {
-    if (i == j) continue;
-    dU += (static_cast<unsigned>(positions(0, i)) == 0) ? _gamma : _mu;
+  #pragma omp parallel for reduction(+:Ui)
+  for (auto i = size_t{0}; i < N; ++i) {
+    assert(_check_x(rn_j));
+    Ui += _Ui(rn_j);
   }
 
-  return dU0 + dU0 * dU;
+  double dUi = Ui - _Ui(positions.col(j));
+
+  double U2 = 0.0;
+  #pragma omp parallel for reduction(+:U2)
+  for (auto i = size_t{0}; i < N; ++i) {
+    if (i == j) continue;
+    U2 += _Ui(positions.col(i));
+  }
+  
+  return dUi + dUi * U2;
   
 }
 

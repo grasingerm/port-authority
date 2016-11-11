@@ -3,6 +3,7 @@
 
 #include "molecular.hpp"
 #include <armadillo>
+#include <tuple>
 
 namespace pauth {
 
@@ -15,8 +16,9 @@ using value_accessor = std::function<double(const metropolis &)>;
 
 using metric = std::function<double(const arma::vec&, const arma::vec&,
                                     const arma::vec&)>;
-using bc = std::function<void(metropolis &, const size_t, arma::vec&)>;
-using trial_move_generator = std::function<arma::vec(const arma::mat&, const size_t, 
+using bc_ret = std::tuple<bool, arma::vec>;
+using bc = std::function<bc_ret(metropolis &, const size_t, arma::vec&)>;
+using trial_move_generator = std::function<arma::vec(const arma::mat&, const size_t,
   std::uniform_real_distribution<double>&, std::default_random_engine&)>;
 using acc = std::function<bool(const metropolis &, const double, const double)>;
 

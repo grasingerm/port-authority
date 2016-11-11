@@ -40,16 +40,16 @@ int main(int argc, char* argv[]) {
     const size_t D = 1;
     const double L = 1.0;
     const metric m = euclidean;
-    const unsigned long nsteps = 1000000;
+    const unsigned long nsteps = 10000000;
     twostate_int_potential pot(0.0, 1.0);
 
     metropolis sim(id, N, D, L, delta_max, 
-                   &pot, T, kB, m, no_bc, twostate_trial_move, 
+                   &pot, T, kB, m, wall_bc, twostate_trial_move, 
                    metropolis::DEFAULT_ACC,
                    random_device()(), true);
 
     arma::mat init_positions(1, 2);
-    init_positions.fill(0.0);
+    init_positions.zeros();
     sim.set_positions(init_positions);
 
     sim.add_callback([&](const metropolis &sim) {

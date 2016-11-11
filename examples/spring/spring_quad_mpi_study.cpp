@@ -14,7 +14,7 @@ static const unsigned BUFFER_SIZE = 256;
 
 int main(int argc, char* argv[]) {
 
-  const char* basename = "linear-spring";
+  const char* basename = "quad-spring";
   char fname_buffer[BUFFER_SIZE];
   const unsigned npts = 100;
 
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
         const metric m = euclidean;
         const bc boundary = no_bc;
         const unsigned long nsteps = 1000000000;
-        const_k_spring_potential pot(1.0);
+        const_quad_spring_potential pot(1.0, -2.0, 1.0);
     
         string fname = string("spring_linear_") + to_string(i) + string(".xyz");
         metropolis sim(fname.c_str(), id, N, D, L, delta_max, 

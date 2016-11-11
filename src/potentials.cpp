@@ -264,10 +264,8 @@ double const_quad_spring_potential::_delta_U(const metropolis &sim,
   const auto rn_j = ro_j + dx;
   const double r2o = dot(ro_j, ro_j);
   const double r2n = dot(rn_j, rn_j);
-  const double Uo = a * r2o * r2o + b * r2o + c;
-  const double Un = a * r2n * r2n + b * r2o + c;
 
-  return Un - Uo;
+  return a * (r2n*r2n - r2o*r2o) + b * (r2n - r2o);
 }
 
 // definitions for pure virtual destructors

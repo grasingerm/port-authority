@@ -15,6 +15,11 @@
 #include "acceptance.hpp"
 #include "boundary.hpp"
 #include "distance.hpp"
+#include "trial.hpp"
+
+/* TODO: make random number generator more general so that user can specify
+ *       which random number generator they'd prefer to use
+ */
 
 namespace pauth {
 
@@ -27,12 +32,14 @@ static unsigned _default_seed = std::random_device()();
 
 static metric _default_metric = periodic_euclidean;
 static bc _default_bc = periodic_bc;
+static trial_move_generator _default_tmg = continuous_trial_move;
 static acc _default_acc = metropolis_acc;
 
 class metropolis {
 public:
   static metric DEFAULT_METRIC;
   static bc DEFAULT_BC;
+  static trial_move_generator DEFAULT_TMG;
   static acc DEFAULT_ACC;
 
   /*! \brief Constructor for a Markov chain Monte Carlo simulation
@@ -49,6 +56,7 @@ public:
    * \param     bc          Boundary conditions
    * \param     acceptance  Determines whether a move is accepted for rejected
    * \param     seed        Seed for random number generator
+   * \param     init_zeros  If true, initializes all molecules to position zero
    * \return                Markov chain Monte Carlo simulation object
    */
   metropolis(const molecular_id id, const size_t N, const size_t D, 
@@ -56,8 +64,10 @@ public:
              abstract_potential* pot, const double T, 
              const double kB = _default_kB, 
              metric m = _default_metric, bc boundary = _default_bc,
+             trial_move_generator tmg = _default_tmg,
              acc acceptance = _default_acc,
-             const unsigned seed = _default_seed); 
+             const unsigned seed = _default_seed,
+             const bool init_zeros = false); 
 
   /*! \brief Constructor for a Markov chain Monte Carlo simulation
    *
@@ -81,6 +91,7 @@ public:
              abstract_potential* pot, const double T, 
              const double kB = _default_kB, 
              metric m = _default_metric, bc boundary = _default_bc,
+             trial_move_generator = _default_tmg,
              acc acceptance = _default_acc,
              const unsigned seed = _default_seed); 
 
@@ -231,6 +242,23 @@ public:
    */
   void simulate(const long unsigned nsteps);
 
+  /*! \brief Set molecular positions
+   *
+   * \param   new_positions   New position matrix
+   */
+  inline void set_positions(const arma::mat &new_positions) {
+    _positions = new_positions;
+  }
+
+  /*! \brief Set molecular position for molecule j
+   *
+   * \param   new_x   New position
+   * \param   j       Index of molecular to change
+   */
+  inline void set_positions(const arma::vec &new_x, const size_t j) {
+    _positions.col(j) = new_x;
+  }
+
 private:
   std::vector<molecular_id> _molecular_ids;
   arma::mat _positions;
@@ -247,6 +275,7 @@ private:
   std::uniform_real_distribution<double> _delta_dist;
   std::uniform_real_distribution<double> _eps_dist;
   std::uniform_int_distribution<size_t> _choice_dist;
+  trial_move_generator _tmg;
   acc _acc;
   mutable std::vector<callback> _parallel_callbacks;
   mutable std::vector<callback> _sequential_callbacks;

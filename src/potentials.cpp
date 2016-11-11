@@ -2,6 +2,7 @@
 #include "metropolis.hpp"
 #include "distance.hpp"
 #include <cmath>
+#include <cassert>
 
 namespace pauth {
 
@@ -266,6 +267,49 @@ double const_quad_spring_potential::_delta_U(const metropolis &sim,
   const double r2n = dot(rn_j, rn_j);
 
   return a * (r2n*r2n - r2o*r2o) + b * (r2n - r2o);
+}
+
+double twostate_int_potential::_U(const metropolis &sim) const {
+
+  const auto N = sim.N();
+  const auto &positions = sim.positions();
+
+  double potential = 0.0;
+
+  #pragma omp parallel for reduction(+:potential)
+  for (auto i = size_t{0}; i < N; ++i) {
+    assert(static_cast<unsigned>(positions(0, i)) == 0 ||
+           static_cast<unsigned>(positions(0, i)) == 1);
+    potential += (static_cast<unsigned>(positions(0, i) == 0)) ? _gamma : _mu;
+  }
+
+  #pragma omp parallel for reduction(+:potential)
+  for (auto i = size_t{0}; i < N; ++i) {
+    for (auto j = size_t{i+1}; j < N; ++j) {
+      potential += (static_cast<unsigned>(positions(0, i) == 0)) ? _gamma : _mu *
+                   (static_cast<unsigned>(positions(0, i) == 0)) ? _gamma : _mu;
+    }
+  }
+
+  return potential;
+}
+
+double twostate_int_potential::_delta_U(const metropolis &sim, const size_t j,
+                                        arma::vec &) const {
+
+  const auto N = sim.N();
+  const auto &positions = sim.positions();
+  const double dU0 = (static_cast<unsigned>(positions(0, j)) == 0) ? _mu - _gamma :
+                                                                     _gamma - _mu;
+  double dU = 0.0;
+
+  for (size_t i = 0; i < N; ++i) {
+    if (i == j) continue;
+    dU += (static_cast<unsigned>(positions(0, i)) == 0) ? _gamma : _mu;
+  }
+
+  return dU0 + dU0 * dU;
+  
 }
 
 // definitions for pure virtual destructors

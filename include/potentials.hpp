@@ -312,6 +312,28 @@ private:
   std::vector<double> fcoeffs;
 };
 
+/*! Two state potential with interactions between molecules
+ */
+class twostate_int_potential : public abstract_potential {
+public:
+  /*! Constructor for two state potential with interactions
+   *
+   * \param     gamma     Potential energy of state 1
+   * \param     mu        Potential energy of state 2
+   * \return              Two state potential with interactions
+   */
+  twostate_int_potential(const double gamma, const double mu) 
+    : _gamma(gamma), _mu(mu) {}
+
+private:
+  double _gamma;
+  double _mu;
+
+  double _U(const metropolis &sim) const;
+  double _delta_U(const metropolis &sim, const size_t j, 
+                  arma::vec &dx) const;
+};
+
 } // namespace pauth
 
 #endif

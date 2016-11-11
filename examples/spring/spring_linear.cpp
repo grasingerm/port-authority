@@ -19,7 +19,8 @@ int main() {
   const_k_spring_potential pot(1.0);
  
   metropolis sim("spring_linear.xyz", id, N, D, L, delta_max, 
-                 &pot, T, kB, m, boundary, metropolis::DEFAULT_ACC,
+                 &pot, T, kB, m, boundary, metropolis::DEFAULT_TMG, 
+                 metropolis::DEFAULT_ACC,
                  random_device()());
 
   long unsigned nsamples = 0;

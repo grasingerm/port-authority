@@ -67,7 +67,8 @@ int main(int argc, char* argv[]) {
     
         string fname = string("spring_linear_") + to_string(i) + string(".xyz");
         metropolis sim(fname.c_str(), id, N, D, L, delta_max, 
-                       &pot, T, kB, m, boundary, metropolis::DEFAULT_ACC,
+                       &pot, T, kB, m, boundary, metropolis::DEFAULT_TMG, 
+                       metropolis::DEFAULT_ACC,
                        random_device()());
 
         sim.add_callback([&](const metropolis &sim) {

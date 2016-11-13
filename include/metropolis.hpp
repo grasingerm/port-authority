@@ -32,14 +32,12 @@ static unsigned _default_seed = std::random_device()();
 
 static metric _default_metric = periodic_euclidean;
 static bc _default_bc = periodic_bc;
-static trial_move_generator _default_tmg = continuous_trial_move;
 static acc _default_acc = metropolis_acc;
 
 class metropolis {
 public:
   static metric DEFAULT_METRIC;
   static bc DEFAULT_BC;
-  static trial_move_generator DEFAULT_TMG;
   static acc DEFAULT_ACC;
 
   /*! \brief Constructor for a Markov chain Monte Carlo simulation
@@ -48,7 +46,7 @@ public:
    * \param     N           Number of molecules
    * \param     D           Number of dimensions 
    * \param     L           Simulation box edge length
-   * \param     delta_max   Maximum move size
+   * \param     tmg         Trial move generator
    * \param     pot         Molecular potential
    * \param     T           Simulation temperature
    * \param     kB          Boltzmann's constant
@@ -60,11 +58,10 @@ public:
    * \return                Markov chain Monte Carlo simulation object
    */
   metropolis(const molecular_id id, const size_t N, const size_t D, 
-             const double L, const double delta_max, 
+             const double L, trial_move_generator tmg,
              abstract_potential* pot, const double T, 
              const double kB = _default_kB, 
              metric m = _default_metric, bc boundary = _default_bc,
-             trial_move_generator tmg = _default_tmg,
              acc acceptance = _default_acc,
              const unsigned seed = _default_seed,
              const bool init_zeros = false); 
@@ -76,7 +73,7 @@ public:
    * \param     N           Number of molecules
    * \param     D           Number of dimensions 
    * \param     L           Simulation box edge length
-   * \param     delta_max   Maximum move size
+   * \param     tmg         Trial move generator
    * \param     pot         Molecular potential
    * \param     T           Simulation temperature
    * \param     kB          Boltzmann's constant
@@ -87,11 +84,10 @@ public:
    * \return                Markov chain Monte Carlo simulation object
    */
   metropolis(const char *fname, const molecular_id id, const size_t N, 
-             const size_t D, const double L, const double delta_max, 
+             const size_t D, const double L, trial_move_generator tmg,
              abstract_potential* pot, const double T, 
              const double kB = _default_kB, 
              metric m = _default_metric, bc boundary = _default_bc,
-             trial_move_generator = _default_tmg,
              acc acceptance = _default_acc,
              const unsigned seed = _default_seed); 
 
@@ -272,7 +268,6 @@ private:
   metric _m;
   bc _bc;
   std::default_random_engine _rng;
-  std::uniform_real_distribution<double> _delta_dist;
   std::uniform_real_distribution<double> _eps_dist;
   std::uniform_int_distribution<size_t> _choice_dist;
   trial_move_generator _tmg;

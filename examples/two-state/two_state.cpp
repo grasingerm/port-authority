@@ -19,7 +19,6 @@ int main(int argc, char* argv[]) {
   long double xsq_sum_global = 0.0;
   std::array<double, 5> Ts = { 1.0 / 0.1, 1.0, 1.0 / 5.0, 1.0 / 10.0, 1.0 / 100.0};
   const double kB = 1.0;
-  const double delta_max = 1.0;
 
   int taskid, numtasks, rc;
   
@@ -43,8 +42,8 @@ int main(int argc, char* argv[]) {
     const unsigned long nsteps = 10000000;
     twostate_int_potential pot(0.0, 1.0);
 
-    metropolis sim(id, N, D, L, delta_max, 
-                   &pot, T, kB, m, wall_bc, twostate_trial_move, 
+    metropolis sim(id, N, D, L, state_trial_move(2), 
+                   &pot, T, kB, m, no_bc,
                    metropolis::DEFAULT_ACC,
                    random_device()(), true);
 

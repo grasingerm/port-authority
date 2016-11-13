@@ -292,16 +292,9 @@ double twostate_int_potential::_delta_U(const metropolis &sim, const size_t j,
 
   const auto N = sim.N();
   const auto &positions = sim.positions();
-  double Ui = 0.0;
 
-  #pragma omp parallel for reduction(+:Ui)
-  for (auto i = size_t{0}; i < N; ++i) {
-    assert(_check_x(rn_j));
-    Ui += _Ui(rn_j);
-  }
-
-  double dUi = Ui - _Ui(positions.col(j));
-
+  double dUi = _Ui(rn_j) - _Ui(positions.col(j));
+  
   double U2 = 0.0;
   #pragma omp parallel for reduction(+:U2)
   for (auto i = size_t{0}; i < N; ++i) {

@@ -47,8 +47,8 @@ int main(int argc, char* argv[]) {
       const_quad_spring_potential pot(1.0, -2.0, 1.0);
   
       string fname = string("spring_linear_") + to_string(i) + string(".xyz");
-      metropolis sim(fname.c_str(), id, N, D, L, delta_max, 
-                     &pot, T, kB, m, boundary, metropolis::DEFAULT_TMG,
+      metropolis sim(fname.c_str(), id, N, D, L, continuous_trial_move(delta_max),
+                     &pot, T, kB, m, boundary, 
                      metropolis::DEFAULT_ACC,
                      random_device()());
 

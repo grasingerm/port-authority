@@ -322,18 +322,19 @@ public:
    * \param     mu        Potential energy of state 2
    * \return              Two state potential with interactions
    */
-  twostate_int_potential(const double gamma, const double mu) 
-    : _gamma(gamma), _mu(mu) {}
+  twostate_int_potential(const double gamma, const double mu) {
+    _Us[0] = gamma;
+    _Us[1] = mu;
+  }
 
 private:
-  double _gamma;
-  double _mu;
+  std::array<double, 2> _Us;
 
   double _U(const metropolis &sim) const;
   double _delta_U(const metropolis &sim, const size_t j, 
                   arma::vec &rn_j) const;
   inline double _Ui(const arma::vec &x) const {
-    return (static_cast<unsigned>(x(0) == 0)) ? _gamma : _mu;
+    return _Us[static_cast<unsigned>(x(0))];
   }
   inline bool _check_x(const arma::vec &x) const {
     return (static_cast<unsigned>(x(0)) == 0 ||

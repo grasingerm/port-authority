@@ -21,8 +21,7 @@ int main() {
   metropolis sim("spring_linear.xyz", id, N, D, L, 
                  continuous_trial_move(delta_max), 
                  &pot, T, kB, m, boundary,
-                 metropolis::DEFAULT_ACC,
-                 random_device()());
+                 metropolis::DEFAULT_ACC);
 
   long unsigned nsamples = 0;
   long double U_sum = 0.0;

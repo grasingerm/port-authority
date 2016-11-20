@@ -4,7 +4,6 @@
 #include <vector>
 #include <array>
 #include <random>
-#include <chrono>
 #include <functional>
 #include <limits>
 #include <armadillo>
@@ -16,6 +15,7 @@
 #include "boundary.hpp"
 #include "distance.hpp"
 #include "trial.hpp"
+#include "seed.hpp"
 
 /* TODO: make random number generator more general so that user can specify
  *       which random number generator they'd prefer to use
@@ -24,11 +24,6 @@
 namespace pauth {
 
 static const double _default_kB = 1.0;
-
-// try using hardware entropy source, otherwise generator random seed with clock
-static unsigned _default_seed = std::random_device()();
-//_default_seed = std::chrono::high_resolution_clock::now().time_since_epoch() 
-//                % std::numeric_limits<unsigned>::max();
 
 static metric _default_metric = periodic_euclidean;
 static bc _default_bc = periodic_bc;
@@ -39,6 +34,10 @@ public:
   static metric DEFAULT_METRIC;
   static bc DEFAULT_BC;
   static acc DEFAULT_ACC;
+
+  /*! \brief Default constructor
+   */
+  metropolis() {}
 
   /*! \brief Constructor for a Markov chain Monte Carlo simulation
    *
@@ -53,7 +52,7 @@ public:
    * \param     m           Metric for measuring molecule-molecule distances
    * \param     bc          Boundary conditions
    * \param     acceptance  Determines whether a move is accepted for rejected
-   * \param     seed        Seed for random number generator
+   * \param     sg          Function for generating a seed
    * \param     init_zeros  If true, initializes all molecules to position zero
    * \return                Markov chain Monte Carlo simulation object
    */
@@ -63,7 +62,7 @@ public:
              const double kB = _default_kB, 
              metric m = _default_metric, bc boundary = _default_bc,
              acc acceptance = _default_acc,
-             const unsigned seed = _default_seed,
+             seed_gen sg = _default_seed_gen,
              const bool init_zeros = false); 
 
   /*! \brief Constructor for a Markov chain Monte Carlo simulation
@@ -80,7 +79,7 @@ public:
    * \param     m           Metric for measuring molecule-molecule distances
    * \param     bc          Boundary conditions
    * \param     acceptance  Determines whether a move is accepted for rejected
-   * \param     seed        Seed for random number generator
+   * \param     sg          Function for generating a seed
    * \return                Markov chain Monte Carlo simulation object
    */
   metropolis(const char *fname, const molecular_id id, const size_t N, 
@@ -89,7 +88,31 @@ public:
              const double kB = _default_kB, 
              metric m = _default_metric, bc boundary = _default_bc,
              acc acceptance = _default_acc,
-             const unsigned seed = _default_seed); 
+             seed_gen sg = _default_seed_gen); 
+
+  /*! \brief Copy constructor
+   *
+   * \param     sim         Metropolis simulation object
+   * \param     sg          Function for generating a seed
+   * \return                Copy
+   */
+  metropolis(const metropolis &sim, seed_gen sg = _default_seed_gen) 
+    : _molecular_ids(sim._molecular_ids), _positions(sim._positions), 
+      _edge_lengths(sim._edge_lengths), _V(sim._V), _potentials(sim._potentials),
+      _T(sim._T), _kB(sim._kB), _beta(sim._beta), _m(sim._m), _bc(sim._bc),
+      _eps_dist(0.0, 1.0), _choice_dist(0, sim._molecular_ids.size()-1), 
+      _tmg(sim._tmg), _acc(sim._acc), 
+      _parallel_callbacks(sim._parallel_callbacks), 
+      _sequential_callbacks(sim._sequential_callbacks), _step(sim._step),
+      _dx(sim._dx), _choice(sim._choice), _dU(sim._dU), _eps(sim._eps),
+      _accepted(sim._accepted) { _rng.seed(sg()); }
+
+  /*! \brief Assignment operator
+   *
+   * \param     rhs     Metropolis simulation object
+   * \return            Self
+   */
+  metropolis operator=(const metropolis &rhs); 
 
   /*! \brief Get number of molecules
    *
@@ -159,12 +182,6 @@ public:
    * \return      Volume
    */
   inline auto V() const { return _V; }
-
-  /*! \brief Get maximum step size
-   *
-   * \return      Max step size
-   */
-  inline auto delta_max() const { return _delta_max; }
 
   /*! \brief Add a callback function
    *
@@ -255,12 +272,19 @@ public:
     _positions.col(j) = new_x;
   }
 
+  /*! \brief Seed the random number generator
+   *
+   * \param     sd      Seed
+   */
+  inline void seed(const unsigned sd) {
+    _rng.seed(sd);
+  }
+
 private:
   std::vector<molecular_id> _molecular_ids;
   arma::mat _positions;
   arma::vec _edge_lengths;
   double _V;
-  double _delta_max;
   std::vector<abstract_potential*> _potentials;
   double _T;
   double _kB;

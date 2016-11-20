@@ -1,7 +1,9 @@
 #ifndef __METROPOLIS_SUITE_HPP__
 #define __METROPOLIS_SUITE_HPP__
 
+#include <map>
 #include "metropolis.hpp"
+#include "mpi.h"
 
 namespace pauth {
 
@@ -9,59 +11,17 @@ class metropolis_suite {
 public:
   /*! \brief Constructor for a suite of Markov chain Monte Carlo simulations
    *
-   * \param     id          Molecular id of simulation molecules
-   * \param     N           Number of molecules
-   * \param     D           Number of dimensions 
-   * \param     L           Simulation box edge length
-   * \param     delta_max   Maximum move size
-   * \param     pot         Molecular potential
-   * \param     T           Simulation temperature
-   * \param     kB          Boltzmann's constant
-   * \param     m           Metric for measuring molecule-molecule distances
-   * \param     bc          Boundary conditions
-   * \param     acceptance  Determines whether a move is accepted for rejected
-   * \param     seed        Seed for random number generator
-   * \return                Markov chain Monte Carlo simulation object
+   * \param     sim         Simulation object to copy
+   * \param     sg          Function for generating a seed
+   * \return                Markov chain Monte Carlo simulation suite
    */
-  metropolis_suite(const molecular_id id, const size_t N, const size_t D, 
-                   const double L, const double delta_max, 
-                   abstract_potential* pot, const double T, 
-                   const double kB = _default_kB, 
-                   metric m = _default_metric, bc boundary = _default_bc,
-                   acc acceptance = _default_acc,
-                   const unsigned seed = _default_seed); 
+  metropolis_suite(const metropolis &sim,
+                   seed_gen sg = _default_seed_gen);
 
-  /*! \brief Constructor for a Markov chain Monte Carlo simulation
-   *
-   * \param     fname       Filename of initial molecular positions
-   * \param     id          Molecular id of simulation molecules
-   * \param     N           Number of molecules
-   * \param     D           Number of dimensions 
-   * \param     L           Simulation box edge length
-   * \param     delta_max   Maximum move size
-   * \param     pot         Molecular potential
-   * \param     T           Simulation temperature
-   * \param     kB          Boltzmann's constant
-   * \param     m           Metric for measuring molecule-molecule distances
-   * \param     bc          Boundary conditions
-   * \param     acceptance  Determines whether a move is accepted for rejected
-   * \param     seed        Seed for random number generator
-   * \return                Markov chain Monte Carlo simulation object
-   */
-  metropolis_suite(const char *fname, const molecular_id id, const size_t N, 
-                   const size_t D, const double L, const double delta_max, 
-                   abstract_potential* pot, const double T, 
-                   const double kB = _default_kB, 
-                   metric m = _default_metric, bc boundary = _default_bc,
-                   acc acceptance = _default_acc,
-                   const unsigned seed = _default_seed);
+  ~metropolis_suite() {
+    if (!(_is_initialized)) MPI_Finalize();
+  }
 
-  /*! \brief Metropolis simulations
-   *
-   * \return      Collection of simulation objects
-   */
-  inline const auto &simulations() const { return _simulations; }
-  
   /*! \brief Variables to average map
    *
    * \return      Variables to average map
@@ -70,9 +30,41 @@ public:
     return _variables_to_average_map; 
   }
 
+  /*! \brief Variables to average map
+   *
+   * \return      Variables to average map
+   */
+  void add_variable_to_average(const char *key, value_accessor acc);
+
+  /*! \brief Run simulation
+   *
+   * \param     nsteps      Number of steps to simulate
+   */
+  void simulate(const long unsigned nsteps);
+
+  /*! \brief Suite variable averages
+   *
+   * \return      Suite variable averages
+   */
+  inline auto averages() {
+    if (_taskid == 0) {
+      auto _averages(_global_variables);
+      for (auto &average : _averages) average.second /= _nsamples_global;
+      return _averages;
+    }
+  }
+
 private:
-  std::vector<metropolis> _simulations;
-  std::map<std::string, accessor> _variables_to_average_map;
+  metropolis _local_sim;
+  std::map<std::string, value_accessor> _variables_to_average_map;
+  std::map<std::string, long double> _local_variables;
+  std::map<std::string, long double> _global_variables;
+  int _rc;
+  int _is_initialized;
+  int _numtasks;
+  int _taskid;
+  long unsigned _nsamples;
+  long unsigned _nsamples_global;
 };
 
 } // namespace pauth

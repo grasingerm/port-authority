@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
     metropolis sim(id, N, D, L, state_trial_move(2), 
                    &pot, T, kB, m, no_bc,
                    metropolis::DEFAULT_ACC,
-                   random_device()(), true);
+                   hardware_entropy_seed_gen, true);
 
     arma::mat init_positions(1, 2);
     init_positions.zeros();

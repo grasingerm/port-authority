@@ -17,7 +17,7 @@ metropolis::metropolis(const molecular_id id, const size_t N, const size_t D,
                        trial_move_generator tmg,
                        abstract_potential *pot, const double T, 
                        const double kB, metric m, bc boundary, 
-                       acc acceptance, const unsigned seed, const bool init_zeros) 
+                       acc acceptance, seed_gen sg, const bool init_zeros) 
     : _molecular_ids(N, id), _positions(N, D), _edge_lengths(D), _V(_pow(L, D)), 
       _potentials(1, pot), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
       _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
@@ -26,7 +26,7 @@ metropolis::metropolis(const molecular_id id, const size_t N, const size_t D,
 
   _edge_lengths.fill(L);
   _dx.zeros();
-  _rng.seed(seed);
+  _rng.seed(sg());
   _edge_lengths.fill(L);
   if (init_zeros)
     _positions.zeros();
@@ -40,7 +40,7 @@ metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
                        trial_move_generator tmg,
                        abstract_potential* pot, const double T, 
                        const double kB, metric m, bc boundary,
-                       acc acceptance, const unsigned seed) 
+                       acc acceptance, seed_gen sg) 
     : _molecular_ids(N, id), _positions(N, D), _edge_lengths(D), _V(_pow(L, D)), 
       _potentials(1, pot), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
       _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
@@ -48,10 +48,40 @@ metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
  
   _edge_lengths.fill(L);
   _dx.zeros();
-  _rng.seed(seed);
+  _rng.seed(sg());
   _edge_lengths.fill(L); 
   _load_positions(fname, _positions, N, D);
 
+}
+
+metropolis metropolis::operator=(const metropolis &rhs) {
+  if (this == &rhs) return *this;
+
+  _molecular_ids = rhs._molecular_ids;
+  _positions = rhs._positions;
+  _edge_lengths = rhs._edge_lengths;
+  _V = rhs._V;
+  _potentials = rhs._potentials;
+  _T = rhs._T;
+  _kB = rhs._kB;
+  _beta = rhs._beta;
+  _m = rhs._m;
+  _bc = rhs._bc;
+  _eps_dist = uniform_real_distribution<double>(0.0, 1.0);
+  _choice_dist = uniform_int_distribution<size_t>(0, N()-1);
+  _tmg = rhs._tmg;
+  _acc = rhs._acc;
+  _parallel_callbacks = rhs._parallel_callbacks;
+  _sequential_callbacks = rhs._sequential_callbacks;
+  _step = rhs._step;
+
+  _dx = rhs._dx;
+  _choice = rhs._choice;
+  _dU = rhs._dU;
+  _eps = rhs._eps;
+  _accepted = rhs._accepted;
+
+  return *this;
 }
 
 void metropolis::simulate(const long unsigned nsteps) {

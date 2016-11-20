@@ -1,8 +1,12 @@
+#include <iostream>
+#include <iomanip>
 #include "metropolis_suite.hpp"
 #include "pauth_debug.hpp"
 
+using namespace std;
+
 namespace pauth {
-  
+
 metropolis_suite::metropolis_suite(const metropolis &sim, seed_gen sg)
   : _nsamples_global(0) {
 
@@ -44,6 +48,19 @@ void metropolis_suite::simulate(const long unsigned nsteps) {
     _rc = MPI_Reduce(&(local_variable.second), &(_global_variables[key]), 1,
                      MPI_LONG_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD); 
     except_mpi_rc(_rc);
+  }
+}
+
+static size_t _w = 20;
+static size_t _p = 12;
+
+void metropolis_suite::report_averages(ostream &ostr) {
+  if (_taskid == 0) {
+    for (auto &global_variable : _global_variables) {
+      ostr << setw(_w) << global_variable.first << " = " 
+           << setprecision(_p) << global_variable.second / _nsamples_global
+           << '\n';
+    }
   }
 }
 

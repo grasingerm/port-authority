@@ -1,6 +1,7 @@
 #ifndef __METROPOLIS_SUITE_HPP__
 #define __METROPOLIS_SUITE_HPP__
 
+#include <iosfwd>
 #include <map>
 #include "metropolis.hpp"
 #include "mpi.h"
@@ -47,12 +48,16 @@ public:
    * \return      Suite variable averages
    */
   inline auto averages() {
-    if (_taskid == 0) {
-      auto _averages(_global_variables);
-      for (auto &average : _averages) average.second /= _nsamples_global;
-      return _averages;
-    }
+    auto _averages(_global_variables);
+    for (auto &average : _averages) average.second /= _nsamples_global;
+    return _averages;
   }
+
+  /*! \brief Report suite variable averages
+   * 
+   * \param     ostr      Output stream to print to
+   */
+  void report_averages(std::ostream &ostr = std::cout);
 
 private:
   metropolis _local_sim;

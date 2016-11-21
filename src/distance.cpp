@@ -4,8 +4,20 @@ namespace pauth {
 
 using namespace arma;
 
-double periodic_euclidean(const arma::vec &r_i, const arma::vec &r_j,
-                          const arma::vec &edge_lengths) {
+arma::vec periodic_euclidean_rij(const arma::vec &r_i, const arma::vec &r_j,
+                                 const arma::vec &edge_lengths) {
+  arma::vec rij = r_i - r_j;
+  for (auto k = size_t{0}; k < r_i.n_rows; ++k) {
+    if (rij(k) > edge_lengths(k) / 2.0)
+      rij(k) -= edge_lengths(k);
+    else if (rij(k) < -edge_lengths(k) / 2.0)
+      rij(k) += edge_lengths(k);
+  }
+  return rij;
+}
+
+double periodic_euclidean_m(const arma::vec &r_i, const arma::vec &r_j,
+                            const arma::vec &edge_lengths) {
   double rij2 = 0;
 
   #pragma omp parallel for reduction(+:rij2)

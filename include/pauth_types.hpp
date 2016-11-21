@@ -14,8 +14,12 @@ using callback = std::function<void(const metropolis &)>;
 using data_accessor = std::function<const arma::mat &(const metropolis &)>;
 using value_accessor = std::function<double(const metropolis &)>;
 
-using metric = std::function<double(const arma::vec&, const arma::vec&,
-                                    const arma::vec&)>;
+using metric = std::tuple<
+                std::function<arma::vec(const arma::vec&, const arma::vec&,
+                                     const arma::vec&)>,
+                std::function<double(const arma::vec&, const arma::vec&,
+                                     const arma::vec&)>
+               >;
 using bc_ret = std::tuple<bool, arma::vec>;
 using bc = std::function<bc_ret(metropolis &, const size_t, arma::vec&)>;
 using trial_move_generator = std::function<arma::vec(const arma::mat&, const size_t)>;

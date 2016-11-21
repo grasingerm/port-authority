@@ -5,8 +5,9 @@ project(port_authority)
 set(CMAKE_C_COMPILER mpicc)
 set(CMAKE_CXX_COMPILER mpic++)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -std=c++14 -pedantic -pedantic-errors")
-set(CMAKE_CXX_FLAGS_RELEASE "-Wall -Wextra -std=c++14 -O3")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -pedantic -pedantic-errors")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # use OpenMP if compiler supports it
 find_package(OpenMP)
@@ -37,9 +38,14 @@ add_executable(two_state_ic_study examples/two-state/two_state_ic_study.cpp)
 add_executable(spring_linear_kawasaki_mpi examples/spring/spring_linear_kawasaki_mpi.cpp)
 add_executable(spring_quad_kawasaki_mpi examples/spring/spring_quad_kawasaki_mpi.cpp)
 add_executable(spring_linear_kawasaki_suite examples/suite/spring_linear_kawasaki_suite.cpp)
+add_executable(lj_liquid_Ar examples/lj/lj_liquid_Ar.cpp)
+add_executable(lj_liquid_Ar_debug examples/lj/lj_liquid_Ar_debug.cpp)
+add_executable(avg_pressure_liquid_Ar examples/lj/avg_pressure_liquid_Ar.cpp)
 
 if (UNIX)
     target_link_libraries(port_authority m)
+    target_link_libraries(lj_liquid_Ar_debug m)
+    target_link_libraries(avg_pressure_liquid_Ar m)
 endif (UNIX)
 
 target_link_libraries(port_authority armadillo)
@@ -53,3 +59,6 @@ target_link_libraries(two_state_ic_study armadillo port_authority ${MPI_CXX_LIBR
 target_link_libraries(spring_linear_kawasaki_mpi armadillo port_authority ${MPI_CXX_LIBRARIES})
 target_link_libraries(spring_quad_kawasaki_mpi armadillo port_authority ${MPI_CXX_LIBRARIES})
 target_link_libraries(spring_linear_kawasaki_suite armadillo port_authority ${MPI_CXX_LIBRARIES})
+target_link_libraries(lj_liquid_Ar armadillo port_authority ${MPI_CXX_LIBRARIES})
+target_link_libraries(lj_liquid_Ar_debug armadillo port_authority ${MPI_CXX_LIBRARIES})
+target_link_libraries(avg_pressure_liquid_Ar armadillo port_authority ${MPI_CXX_LIBRARIES})

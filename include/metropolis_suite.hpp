@@ -8,15 +8,29 @@
 
 namespace pauth {
 
+enum class info_lvl_flag { QUIET, PROFILE, VERBOSE, DEBUG }; 
+
 class metropolis_suite {
 public:
   /*! \brief Constructor for a suite of Markov chain Monte Carlo simulations
    *
-   * \param     sim         Simulation object to copy
-   * \param     sg          Function for generating a seed
-   * \return                Markov chain Monte Carlo simulation suite
+   * Constructs and equilibrates a Markov chain Monte Carlo simulation suite.
+   * This ``suite'' consists of a collection of MCMC simulations, each running
+   * on its own separate MPI process.
+   *
+   * \param     sim                   Simulation object to copy
+   * \param     equilibration_steps   Number of steps to run at initialization
+   * \param     dstep                 Number of steps in between samples 
+   * \param     ilf                   Flag for determing diagnostic info to print
+   * \param     ostr                  Output stream to print to
+   * \param     sg                    Function for generating a seed
+   * \return                          Markov chain Monte Carlo simulation suite
    */
   metropolis_suite(const metropolis &sim,
+                   const unsigned long equilibration_steps = 0,
+                   const unsigned dstep = 1,
+                   const info_lvl_flag ilf = info_lvl_flag::QUIET,
+                   std::ostream &ostr = std::cout,
                    seed_gen sg = _default_seed_gen);
 
   ~metropolis_suite() {
@@ -47,17 +61,27 @@ public:
    *
    * \return      Suite variable averages
    */
-  inline auto averages() {
+  inline auto averages() const {
     auto _averages(_global_variables);
     for (auto &average : _averages) average.second /= _nsamples_global;
     return _averages;
   }
 
   /*! \brief Report suite variable averages
-   * 
-   * \param     ostr      Output stream to print to
    */
-  void report_averages(std::ostream &ostr = std::cout);
+  void report_averages() const;
+
+  /*! \brief Report suite variable averages
+   */
+  void tabulate_averages(const double x, const char delim=',') const;
+
+  /*! \brief Set info level
+   *
+   * \param   info_lvl    Info level to set
+   */
+  inline void set_info_lvl(const info_lvl_flag info_lvl) {
+    _info_lvl = info_lvl;
+  }
 
 private:
   metropolis _local_sim;
@@ -70,6 +94,8 @@ private:
   int _taskid;
   long unsigned _nsamples;
   long unsigned _nsamples_global;
+  info_lvl_flag _info_lvl;
+  std::ostream &_ostr;
 };
 
 } // namespace pauth

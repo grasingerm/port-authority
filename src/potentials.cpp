@@ -46,26 +46,43 @@ double abstract_LJ_potential::_delta_U(const metropolis &sim, const size_t j,
 
   #pragma omp parallel for reduction(+:dU)
   for (auto i = size_t{0}; i < N; ++i) {
+    if (i == j) continue;
+
+    const auto well_depth = get_well_depth(molecular_ids[i], molecular_ids[j]);
     double rij2 = sim.m(positions.col(i), ro_j, edge_lengths);
     double rzero = get_rzero(molecular_ids[i], molecular_ids[j]);
     double rat2 = (rzero * rzero) / rij2;
     double rat6 = rat2 * rat2 * rat2;
 
-    const double Uo = 4.0 * get_well_depth(molecular_ids[i], molecular_ids[j]) *
-                      (rat6 * rat6 - rat6);
+    const double Uo = 4.0 * well_depth * (rat6 * rat6 - rat6);
     
     rij2 = sim.m(positions.col(i), rn_j, edge_lengths);
     rzero = get_rzero(molecular_ids[i], molecular_ids[j]);
     rat2 = (rzero * rzero) / rij2;
     rat6 = rat2 * rat2 * rat2;
 
-    const double Un = 4.0 * get_well_depth(molecular_ids[i], molecular_ids[j]) *
-                      (rat6 * rat6 - rat6);
+    const double Un = 4.0 * well_depth * (rat6 * rat6 - rat6);
    
     dU += Un - Uo;
   }
 
   return dU;
+}
+
+arma::vec abstract_LJ_potential::_forceij(const metropolis &sim, const size_t i,
+                                          const size_t j) const {
+  const auto &molecular_ids = sim.molecular_ids();
+  const auto &positions = sim.positions();
+  const auto &edge_lengths = sim.edge_lengths();
+  const auto rij = sim.rij(positions.col(i), positions.col(j), edge_lengths);
+  const double _rij2 = dot(rij, rij);
+  const double rzero = get_rzero(molecular_ids[i], molecular_ids[j]);
+  const double rat2 = (rzero * rzero) / _rij2;
+  const double rat6 = rat2 * rat2 * rat2;
+  const double rat8 = rat6 * rat2;
+  const double well_depth = get_well_depth(molecular_ids[i], molecular_ids[j]);
+
+  return rij / rzero * well_depth * (48.0 * rat8 * rat6 - 24.0 * rat8);
 }
 
 double abstract_LJ_cutoff_potential::_U(const metropolis &sim) const {
@@ -120,7 +137,10 @@ double abstract_LJ_cutoff_potential::_delta_U(const metropolis &sim,
 
   #pragma omp parallel for reduction(+:dU)
   for (auto i = size_t{0}; i < N; ++i) {
-    const double rzero = get_rzero(molecular_ids[i], molecular_ids[j]);
+    if (i == j) continue;
+
+    const auto rzero = get_rzero(molecular_ids[i], molecular_ids[j]);
+    const auto well_depth = get_well_depth(molecular_ids[i], molecular_ids[j]);
     const double rz2 = rzero * rzero;
     const double rz4 = rz2 * rz2;
     const double rz8 = rz4 * rz4;
@@ -136,7 +156,7 @@ double abstract_LJ_cutoff_potential::_delta_U(const metropolis &sim,
       const double rat2 = rz2 / rij2;
       const double rat6 = rat2 * rat2 * rat2;
 
-      Uo = 4.0 * get_well_depth(molecular_ids[i], molecular_ids[j]) *
+      Uo = 4.0 * well_depth *
            ((rat6 * rat6 - rat6) - u_rc - 
             (std::sqrt(rij2) - _cutoff) * dudr_rc);
     }
@@ -148,7 +168,7 @@ double abstract_LJ_cutoff_potential::_delta_U(const metropolis &sim,
       const double rat2 = rz2 / rij2;
       const double rat6 = rat2 * rat2 * rat2;
 
-      Un = 4.0 * get_well_depth(molecular_ids[i], molecular_ids[j]) *
+      Un = 4.0 * well_depth *
            ((rat6 * rat6 - rat6) - u_rc - 
             (std::sqrt(rij2) - _cutoff) * dudr_rc);
     }
@@ -157,6 +177,39 @@ double abstract_LJ_cutoff_potential::_delta_U(const metropolis &sim,
   }
 
   return dU;
+}
+
+arma::vec abstract_LJ_cutoff_potential::_forceij(const metropolis &sim, 
+                                                 const size_t i,
+                                                 const size_t j) const {
+
+  const auto &molecular_ids = sim.molecular_ids();
+  const auto &positions = sim.positions();
+  const auto &edge_lengths = sim.edge_lengths();
+  const auto _rij = sim.rij(positions.col(i), positions.col(j), edge_lengths);
+  const double _rij2 = dot(_rij, _rij);
+
+  if (_rij2 <= _rc2) {
+
+    const double rzero = get_rzero(molecular_ids[i], molecular_ids[j]);
+    const double rz2 = rzero * rzero;
+    const double rz4 = rz2 * rz2;
+    const double rz8 = rz4 * rz4;
+
+    const double dudr_rc = 24.0 * (rz4 * rz2 * rzero) / (_rc7)-48.0 *
+                           (rz8 * rz4 * rzero) / (_rc13);
+
+    const double rat2 = rz2 / _rij2;
+    const double rat6 = rat2 * rat2 * rat2;
+    const double rat8 = rat6 * rat2;
+    const double well_depth =
+        get_well_depth(molecular_ids[i], molecular_ids[j]);
+
+    return _rij / rzero * well_depth *
+           (48.0 * rat8 * rat6 - 24.0 * rat8 + dudr_rc / std::sqrt(_rij2));
+  }
+
+  return arma::zeros(sim.D());
 }
 
 double abstract_spring_potential::_U(const metropolis &sim) const {
@@ -239,6 +292,11 @@ double const_poly_spring_potential::_delta_U(const metropolis &sim,
   return Un - Uo;
 }
 
+arma::vec const_poly_spring_potential::_forceij(const metropolis &sim, const size_t, 
+                                                const size_t) const {
+  return arma::zeros(sim.D());
+}
+
 double const_quad_spring_potential::_U(const metropolis &sim) const {
 
   const auto N = sim.N();
@@ -262,6 +320,17 @@ double const_quad_spring_potential::_delta_U(const metropolis &sim,
   const double r2n = dot(rn_j, rn_j);
 
   return a * (r2n*r2n - r2o*r2o) + b * (r2n - r2o);
+}
+
+arma::vec abstract_spring_potential::_forceij(const metropolis &sim, 
+                                                      const size_t, 
+                                                      const size_t) const {
+  return arma::zeros(sim.D());
+}
+
+arma::vec const_quad_spring_potential::_forceij(const metropolis &sim, const size_t, 
+                                                const size_t) const {
+  return arma::zeros(sim.D());
 }
 
 double twostate_int_potential::_U(const metropolis &sim) const {
@@ -304,6 +373,11 @@ double twostate_int_potential::_delta_U(const metropolis &sim, const size_t j,
   
   return dUi + dUi * U2;
   
+}
+
+arma::vec twostate_int_potential::_forceij(const metropolis &sim, const size_t, 
+                                           const size_t) const {
+  return arma::zeros(sim.D());
 }
 
 // definitions for pure virtual destructors

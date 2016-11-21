@@ -9,7 +9,7 @@
 using namespace std;
 using namespace pauth;
 
-int main(int argc, char* argv[]) {
+int main() {
 
   const double T = 1.0;
   const double kB = 1.0;
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
                  &pot, T, kB, m, boundary,
                  kawasaki_acc);
 
-  metropolis_suite msuite(sim);
+  metropolis_suite msuite(sim, 0, 1, info_lvl_flag::VERBOSE);
 
   msuite.add_variable_to_average("x", [](const metropolis &sim) {
     return sim.positions()(0, 0);
@@ -37,18 +37,10 @@ int main(int argc, char* argv[]) {
   msuite.add_variable_to_average("x^2", [](const metropolis &sim) {
     return sim.positions()(0, 0) * sim.positions()(0, 0);
   });
-  msuite.add_variable_to_average("U", [](const metropolis &sim) {
-    double U_sum = 0.0;
-    for (const auto &potential : sim.potentials())
-      U_sum += potential->U(sim);
-    return U_sum;
-  });
+  msuite.add_variable_to_average("U", accessors::U);
 
   msuite.simulate(nsteps);
-
-  auto averages = msuite.averages();
-  for (const auto &average : averages)
-    cout << average.first << ": " << average.second << '\n';
+  msuite.report_averages();
 
   return 0;
 }

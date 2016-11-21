@@ -162,13 +162,28 @@ public:
    */
   inline auto beta() const { return _beta; }
 
-  /*! \brief Get metric
+  /*! \brief Get distance between molecules
    *
-   * \return      Metropolis metric
+   * \param   r_i            Position of molecule i
+   * \param   r_j            Position of molecule j
+   * \param   edge_lengths   Edge lengths of simulation box
+   * \return                 Distance
    */
   inline auto m(const arma::vec &r_i, const arma::vec &r_j, 
                 const arma::vec &edge_lengths) const { 
-    return _m(r_i, r_j, edge_lengths);
+    return std::get<1>(_m)(r_i, r_j, edge_lengths);
+  }
+
+  /*! \brief Get relative position
+   *
+   * \param   r_i            Position of molecule i
+   * \param   r_j            Position of molecule j
+   * \param   edge_lengths   Edge lengths of simulation box
+   * \return                 Relative position
+   */
+  inline auto rij(const arma::vec &r_i, const arma::vec &r_j, 
+                  const arma::vec &edge_lengths) const { 
+    return std::get<0>(_m)(r_i, r_j, edge_lengths);
   }
 
   /*! \brief Get edge lengths of simulation box
@@ -278,6 +293,14 @@ public:
    */
   inline void seed(const unsigned sd) {
     _rng.seed(sd);
+  }
+
+  /*! \brief Reset number of steps
+   *
+   * \param   step    Step number to set
+   */
+  inline void reset_step(const unsigned long step = 0) {
+    _step = step;
   }
 
 private:

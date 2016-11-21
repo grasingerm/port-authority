@@ -6,5 +6,6 @@
 #include "array_helpers.hpp"
 #include "callbacks.hpp"
 #include "mprof.hpp"
+#include "accessors.hpp"
 
 #endif

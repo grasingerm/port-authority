@@ -37,7 +37,7 @@ public:
    * is much more efficient than calculating the difference using `U`.
    * Requires: 0 <= i < N
    * 
-   * \param    molecular_ids   Molecular ids
+   * \param    sim             Metropolis simulation object
    * \param    j               Index of the molecule that moved
    * \param    rn_j            New position
    * \return                   Change in potential energy
@@ -47,10 +47,24 @@ public:
     return _delta_U(sim, j, rn_j);
   }
 
+  /*! \brief Calculates the force between molecules i and j
+   *
+   * \param    sim             Metropolis simulation object
+   * \param    i               Index of the first molecule
+   * \param    j               Index of the second molecule
+   * \return                   Force of molecule j on molecule i
+   */
+  inline arma::vec forceij(const metropolis &sim, const size_t i, 
+                           const size_t j) const {
+    return _forceij(sim, i, j);
+  }
+
 private:
   virtual double _U(const metropolis &sim) const = 0;
   virtual double _delta_U(const metropolis &sim, const size_t j, 
                           arma::vec &rn_j) const = 0;
+  virtual arma::vec _forceij(const metropolis &sim, const size_t i, 
+                             const size_t j) const = 0;
 };
 
 /*! Public interface for a 6-12 Lennard-Jones pairwise potential
@@ -85,6 +99,8 @@ private:
   virtual double _U(const metropolis &sim) const;
   virtual double _delta_U(const metropolis &sim, const size_t j, 
                           arma::vec &dx) const;
+  virtual arma::vec _forceij(const metropolis &sim, const size_t i, 
+                             const size_t j) const;
   virtual double _get_well_depth(const molecular_id,
                                  const molecular_id) const = 0;
   virtual double _get_rzero(const molecular_id, const molecular_id) const = 0;
@@ -129,39 +145,32 @@ class abstract_LJ_cutoff_potential : public abstract_LJ_potential {
 public:
   /*! \brief Constructor for a LJ potential with a cutoff radius
    *
-   * \param   edge_length    Length of edge of control volume cube
    * \param   cutoff         Cutoff radius, default value is 2.5
    * \return                 LJ potential
    */
-  abstract_LJ_cutoff_potential(const double edge_length,
-                               const double cutoff = 2.5)
-      : _edge_length(edge_length), _cutoff(cutoff), _rc2(_cutoff * _cutoff),
+  abstract_LJ_cutoff_potential(const double cutoff = 2.5)
+      : _cutoff(cutoff), _rc2(_cutoff * _cutoff),
         _rc6(_rc2 * _rc2 * _rc2), _rc7(_rc6 * _cutoff), _rc12(_rc6 * _rc6),
         _rc13(_rc6 * _rc7) {}
 
   virtual ~abstract_LJ_cutoff_potential() = 0;
 
-  /*! \brief Get edge length of control volume
-   *
-   * \return            Edge length
-   */
-  double get_edge_length() const { return _edge_length; }
-
   /*! \brief Get cutoff radius
    *
    * \return            Cutoff radius
    */
-  double get_cutoff() const { return _cutoff; }
+  inline double cutoff() const { return _cutoff; }
 
 private:
   virtual double _U(const metropolis &sim) const;
   virtual double _delta_U(const metropolis &sim, const size_t j, 
                           arma::vec &rn_j) const;
+  virtual arma::vec _forceij(const metropolis &sim, const size_t i, 
+                             const size_t j) const;
   virtual double _get_well_depth(const molecular_id,
                                  const molecular_id) const = 0;
   virtual double _get_rzero(const molecular_id, const molecular_id) const = 0;
 
-  double _edge_length;
   double _cutoff;
 
   double _rc2;
@@ -188,9 +197,8 @@ public:
    */
   const_well_params_LJ_cutoff_potential(const double well_depth,
                                         const double rzero,
-                                        const double edge_length,
                                         const double cutoff = 2.5)
-      : abstract_LJ_cutoff_potential(edge_length, cutoff),
+      : abstract_LJ_cutoff_potential(cutoff),
         _well_depth(well_depth), _rzero(rzero) {}
 
   ~const_well_params_LJ_cutoff_potential() {}
@@ -223,6 +231,8 @@ private:
   virtual double _U(const metropolis &sim) const;
   virtual double  _delta_U(const metropolis &sim, const size_t j, 
                            arma::vec &rn_j) const;
+  virtual arma::vec _forceij(const metropolis &sim, const size_t, 
+                             const size_t) const;
 
   virtual double _get_k(molecular_id) const = 0;
 };
@@ -278,6 +288,8 @@ private:
   virtual double _U(const metropolis &sim) const;
   virtual double _delta_U(const metropolis &sim, const size_t j, 
                           arma::vec &rn_j) const;
+  virtual arma::vec _forceij(const metropolis &sim, const size_t, 
+                             const size_t) const;
 
   double a;
   double b;
@@ -307,6 +319,8 @@ private:
   virtual double _U(const metropolis &sim) const;
   virtual double _delta_U(const metropolis &sim, const size_t j, 
                           arma::vec &rn_j) const;
+  virtual arma::vec _forceij(const metropolis &sim, const size_t, 
+                             const size_t) const;
 
   std::vector<double> pcoeffs;
   std::vector<double> fcoeffs;
@@ -340,6 +354,7 @@ private:
     return (static_cast<unsigned>(x(0)) == 0 ||
             static_cast<unsigned>(x(0)) == 1);
   }
+  arma::vec _forceij(const metropolis &sim, const size_t, const size_t) const;
 };
 
 } // namespace pauth

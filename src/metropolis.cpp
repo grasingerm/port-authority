@@ -18,7 +18,7 @@ metropolis::metropolis(const molecular_id id, const size_t N, const size_t D,
                        abstract_potential *pot, const double T, 
                        const double kB, metric m, bc boundary, 
                        acc acceptance, seed_gen sg, const bool init_zeros) 
-    : _molecular_ids(N, id), _positions(N, D), _edge_lengths(D), _V(_pow(L, D)), 
+    : _molecular_ids(N, id), _positions(D, N), _edge_lengths(D), _V(_pow(L, D)), 
       _potentials(1, pot), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
       _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
       _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _eps(0.0), 
@@ -41,7 +41,7 @@ metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
                        abstract_potential* pot, const double T, 
                        const double kB, metric m, bc boundary,
                        acc acceptance, seed_gen sg) 
-    : _molecular_ids(N, id), _positions(N, D), _edge_lengths(D), _V(_pow(L, D)), 
+    : _molecular_ids(N, id), _positions(D, N), _edge_lengths(D), _V(_pow(L, D)), 
       _potentials(1, pot), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
       _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
       _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _eps(0.0), _accepted(false) {
@@ -94,9 +94,9 @@ void metropolis::simulate(const long unsigned nsteps) {
   for (const auto &cb : _sequential_callbacks) cb(*this);
 
   // Run simulation
-  for (; _step <= nsteps; ++_step) {
+  for (; _step < nsteps; ++_step) {
     // generator trial move and molecule choice
-    const auto _choice = _choice_dist(_rng);
+    _choice = _choice_dist(_rng);
     _dx = _tmg(_positions, _choice);
 
     // implement boundary condition, check if move allowed

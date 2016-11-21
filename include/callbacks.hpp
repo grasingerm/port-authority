@@ -22,22 +22,6 @@
 
 namespace pauth {
 
-/*! \brief Wrapper for accessing molecular positions
- *
- * \param   sim   metropolis object
- * \return        Molecular positions
- */
-inline const arma::mat &positions(const metropolis &sim) {
-  return sim.positions();
-}
-
-/*! \brief Wrapper for accessing current metropolis step
- *
- * \param   sim   metropolis object
- * \return        Current step
- */
-inline double step(const metropolis &sim) { return sim.step(); }
-
 /*! \brief Callback for saving xyz data to file
  */
 class save_xyz_callback {
@@ -411,8 +395,9 @@ auto print_trajectory_callback(const unsigned dstep = 1,
                  std::to_string(dstep) + std::string(" is not positive.")); 
 
   if (print_header)
-    ostr << std::setw(3*_w) << 'x' << ' ' 
-         << std::setw(3*_w) << "dx" << ' '
+    ostr << std::setw(3*_w+2) << 'x' << ' ' 
+         << std::setw(3*_w+2) << "dx" << ' '
+         << std::setw(_w) << "choice" << ' '
          << std::setw(_w) << "dU" << ' '
          << std::setw(_w) << "eps" << ' '
          << std::setw(_w) << "accept" << ' '
@@ -426,12 +411,13 @@ auto print_trajectory_callback(const unsigned dstep = 1,
       if (i < 3) ostr << std::setw((3 - i)*_w) << ' ';
 
       for (i = 0; i < sim.D(); ++i) 
-        ostr << std::setw(_w) << std::setprecision(_p) << sim.positions()(i, sim.choice()) << ' ';
+        ostr << std::setw(_w) << std::setprecision(_p) << sim.dx()(i) << ' ';
       if (i < 3) ostr << std::setw((3 - i)*_w) << ' ';
 
-      ostr << std::setw(_w) << std::setprecision(_p) << sim.dU() << ' '
+      ostr << std::setw(_w) << sim.choice() << ' '
+           << std::setw(_w) << std::setprecision(_p) << sim.dU() << ' '
            << std::setw(_w) << std::setprecision(_p) << sim.eps() << ' '
-           << std::setw(_w) << std::setprecision(_p) << sim.accepted() << ' '
+           << std::setw(_w) << sim.accepted() << ' '
            << '\n';
     }
   };

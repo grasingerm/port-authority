@@ -3,12 +3,15 @@
 #include "distance.hpp"
 #include <cmath>
 #include <cassert>
+#include <stdexcept>
+#include <boost/algorithm/string.hpp>
+#include "yaml-cpp/yaml.h"
 
 namespace pauth {
 
 using namespace arma;
 
-double abstract_LJ_potential::_U(const metropolis &sim) const {
+double abstract_LJ_full_potential::_U(const metropolis &sim) const {
 
   const auto &molecular_ids = sim.molecular_ids();
   const auto &positions = sim.positions();
@@ -34,7 +37,7 @@ double abstract_LJ_potential::_U(const metropolis &sim) const {
   return potential;
 }
 
-double abstract_LJ_potential::_delta_U(const metropolis &sim, const size_t j,
+double abstract_LJ_full_potential::_delta_U(const metropolis &sim, const size_t j,
                                        arma::vec &rn_j) const {
   
   const auto &molecular_ids = sim.molecular_ids();
@@ -69,7 +72,7 @@ double abstract_LJ_potential::_delta_U(const metropolis &sim, const size_t j,
   return dU;
 }
 
-arma::vec abstract_LJ_potential::_forceij(const metropolis &sim, const size_t i,
+arma::vec abstract_LJ_full_potential::_forceij(const metropolis &sim, const size_t i,
                                           const size_t j) const {
   const auto &molecular_ids = sim.molecular_ids();
   const auto &positions = sim.positions();
@@ -380,9 +383,46 @@ arma::vec twostate_int_potential::_forceij(const metropolis &sim, const size_t,
   return arma::zeros(sim.D());
 }
 
+abstract_LJ_lookup_potential::abstract_LJ_lookup_potential(const char *fname) {
+  vector<string> molecular_strs;
+  const auto well_params = YAML::LoadFile(fname);
+
+  for (const auto &well_param : well_params) {
+    auto molecular_pair_str = well_param.first.as<string>();
+    boost::split(molecular_strs, molecular_pair_str, boost::is_any_of(","));
+    for (auto &molecular_str : molecular_strs) boost::trim(molecular_str);
+    if (molecular_names_to_ids.count(molecular_strs[0]) &&
+        molecular_names_to_ids.count(molecular_strs[1])) {
+      unordered_pair<molecular_id> key { 
+        molecular_names_to_ids.at(molecular_strs[0]),
+        molecular_names_to_ids.at(molecular_strs[1]) 
+      };
+      _well_depth_map[key] = well_param.second["epsilon"].as<double>();
+      _rzero_map[key] = well_param.second["sigma"].as<double>();
+    }
+    else throw runtime_error(string("Molecular pair ") + 
+                             well_param.first.as<string>() + 
+                             string(" not found."));
+  }
+}
+
+double abstract_LJ_lookup_potential::_get_well_depth(const molecular_id id1,
+                                                     const molecular_id id2) const {
+  unordered_pair<molecular_id> key { id1, id2 };
+  return _well_depth_map.at(key);
+}
+
+double abstract_LJ_lookup_potential::_get_rzero(const molecular_id id1,
+                                                const molecular_id id2) const {
+  unordered_pair<molecular_id> key { id1, id2 };
+  return _rzero_map.at(key);
+}
+
 // definitions for pure virtual destructors
 abstract_potential::~abstract_potential() {}
 abstract_LJ_potential::~abstract_LJ_potential() {}
+abstract_LJ_full_potential::~abstract_LJ_full_potential() {}
+abstract_LJ_lookup_potential::~abstract_LJ_lookup_potential() {}
 abstract_LJ_cutoff_potential::~abstract_LJ_cutoff_potential() {}
 abstract_spring_potential::~abstract_spring_potential() {}
 

@@ -50,13 +50,10 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  MPI_Init(nullptr, nullptr);
-
   const double T = 100.0 / 121.0; /* Ar temperature scale is 121 K */
   //const double density_scale = 1686.85;
   const double kB = 1.0;
 
-  const molecular_id id = molecular_id::Test1;
   const size_t N = 256;
   const size_t D = 3;
   const double L = 6.8;
@@ -64,32 +61,19 @@ int main(int argc, char* argv[]) {
   const double delta_max = 0.2 * a;
   const metric m = periodic_euclidean;
   const bc boundary = periodic_bc;
-  const_well_params_LJ_cutoff_potential pot(1.0, 1.0, 2.5);
-  const double density_scale = 1686.85;
-  const array<double, 2> density_bounds { { 950.0 / density_scale, 
-                                            1150.0 / density_scale } };
-  const size_t num_sims = 25;
-  const double drho = (density_bounds[1] - density_bounds[0]) / num_sims;
-  ofstream ofs("pressure_liquid_Ar.csv", ofstream::out);
- 
-  for (unsigned k = 0; k < num_sims; ++k) {
-    const double density = k * drho + density_bounds[0];
-    const double L = pow(static_cast<double>(N) / density, 1.0 / 3.0);
+  LJ_cutoff_potential pot("lj-params.yaml", 2.5);
+  
+  metropolis sim("liquid256_init.xyz", N, D, L, continuous_trial_move(delta_max), 
+                 &pot, T, kB, m, boundary,
+                 metropolis_acc);
 
-    metropolis sim("liquid256_init.xyz", id, N, D, L, continuous_trial_move(delta_max), 
-                   &pot, T, kB, m, boundary,
-                   metropolis_acc);
+  metropolis_suite msuite(sim, equilibration_steps, dsteps, info_lvl_flag::VERBOSE);
 
-    metropolis_suite msuite(sim, equilibration_steps, dsteps, 
-                            info_lvl_flag::QUIET, ofs);
+  msuite.add_variable_to_average("U", accessors::U);
+  msuite.add_variable_to_average("P", accessors::P);
 
-    msuite.add_variable_to_average("P", accessors::P);
-
-    msuite.simulate(nsteps);
-    msuite.tabulate_averages(density);
-  }
-
-  MPI_Finalize();
+  msuite.simulate(nsteps);
+  msuite.report_averages();
 
   return 0;
 }

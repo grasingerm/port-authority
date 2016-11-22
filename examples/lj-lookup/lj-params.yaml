@@ -1,0 +1,15 @@
+Ar, Ar:
+  epsilon: 1.0
+  sigma: 1.0
+
+Ar, Cu:
+  epsilon: 1.2
+  sigma: 0.6
+
+Cu, Cu:
+  epsilon: 1.5
+  sigma: 1.1
+
+H, H:
+  epsilon: 0.7
+  sigma: 0.4

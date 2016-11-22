@@ -4,8 +4,10 @@
 #include <initializer_list>
 #include <stdexcept>
 #include <vector>
+#include <unordered_map>
 #include <armadillo>
 #include "pauth_types.hpp"
+#include "molecular.hpp"
 
 namespace pauth {
 
@@ -96,14 +98,71 @@ public:
   }
 
 private:
+  virtual double _U(const metropolis &sim) const = 0;
+  virtual double _delta_U(const metropolis &sim, const size_t j, 
+                          arma::vec &dx) const = 0;
+  virtual arma::vec _forceij(const metropolis &sim, const size_t i, 
+                             const size_t j) const = 0;
+  virtual double _get_well_depth(const molecular_id,
+                                 const molecular_id) const = 0;
+  virtual double _get_rzero(const molecular_id, const molecular_id) const = 0;
+};
+
+/*! Public interface for a 6-12 Lennard-Jones pairwise potential without cutoff
+ */
+class abstract_LJ_full_potential : virtual public abstract_LJ_potential {
+public:
+  virtual ~abstract_LJ_full_potential() = 0;
+
+private:
   virtual double _U(const metropolis &sim) const;
   virtual double _delta_U(const metropolis &sim, const size_t j, 
                           arma::vec &dx) const;
   virtual arma::vec _forceij(const metropolis &sim, const size_t i, 
                              const size_t j) const;
-  virtual double _get_well_depth(const molecular_id,
-                                 const molecular_id) const = 0;
-  virtual double _get_rzero(const molecular_id, const molecular_id) const = 0;
+};
+
+/*! \brief 6-12 Lennard-Jones pairwise potential
+ *
+ * Public interface for a Lennard-Jones potential to be used in a simulation 
+ * where the potential parameters between every pair of molecules is loaded 
+ * from a YAML file and looked up at runtime.
+ */
+class abstract_LJ_lookup_potential : virtual public abstract_LJ_potential {
+public:
+  virtual ~abstract_LJ_lookup_potential() = 0;
+
+  /*! \brief Constructor for LJ potential where well parameters are looked up
+   *
+   * \param       fname     Filename to well parameter data
+   * \return                LJ potential with well parameter lookup
+   */
+  abstract_LJ_lookup_potential(const char *fname);
+
+private:
+  virtual double _get_well_depth(const molecular_id, const molecular_id) const;
+  virtual double _get_rzero(const molecular_id, const molecular_id) const;
+
+  molecular_pair_interaction_map _well_depth_map; 
+  molecular_pair_interaction_map _rzero_map; 
+};
+
+/*! \brief 6-12 Lennard-Jones pairwise potential
+ *
+ * Lennard-Jones potential to be used in a simulation where the potential
+ * parameters between every pair of molecules is loaded from a YAML file
+ * and looked up at runtime.
+ */
+class LJ_potential : public abstract_LJ_full_potential, 
+                     public abstract_LJ_lookup_potential {
+public:
+  /*! \brief Constructor for LJ potential where well parameters are looked up
+   *
+   * \param       fname     Filename to well parameter data
+   * \return                LJ potential with well parameter lookup
+   */
+  LJ_potential(const char *fname) 
+    : abstract_LJ_lookup_potential(fname) {}
 };
 
 /*! \brief 6-12 Lennard-Jones pairwise potential
@@ -112,7 +171,7 @@ private:
  * function between every pair of molecules is the same (i.e. to be used in
  * a simulation where all of the molecules are of the same type).
  */
-class const_well_params_LJ_potential : public abstract_LJ_potential {
+class const_well_params_LJ_potential : public abstract_LJ_full_potential {
 public:
   /*! \brief Constructor for a LJ potential with constant well parameters
    *
@@ -141,7 +200,7 @@ private:
  * Public interface for a 6-12 Lennard-Jones potential with a cutoff radius
  * and periodic boundary conditions.
  */
-class abstract_LJ_cutoff_potential : public abstract_LJ_potential {
+class abstract_LJ_cutoff_potential : virtual public abstract_LJ_potential {
 public:
   /*! \brief Constructor for a LJ potential with a cutoff radius
    *
@@ -167,9 +226,6 @@ private:
                           arma::vec &rn_j) const;
   virtual arma::vec _forceij(const metropolis &sim, const size_t i, 
                              const size_t j) const;
-  virtual double _get_well_depth(const molecular_id,
-                                 const molecular_id) const = 0;
-  virtual double _get_rzero(const molecular_id, const molecular_id) const = 0;
 
   double _cutoff;
 
@@ -178,6 +234,26 @@ private:
   double _rc7;
   double _rc12;
   double _rc13;
+};
+
+/*! \brief 6-12 Lennard-Jones pairwise potential
+ *
+ * Lennard-Jones potential with cutoff to be used in a simulation where the 
+ * parameters between every pair of molecules is loaded from a YAML file
+ * and looked up at runtime.
+ */
+class LJ_cutoff_potential : public abstract_LJ_lookup_potential, 
+                            public abstract_LJ_cutoff_potential {
+public:
+  /*! \brief Constructor for LJ potential where well parameters are looked up
+   *
+   * \param       fname     Filename to well parameter data
+   * \param       cutoff    Cutoff radius
+   * \return                LJ potential with well parameter lookup
+   */
+  LJ_cutoff_potential(const char *fname, const double cutoff = 2.5) 
+    : abstract_LJ_lookup_potential(fname), abstract_LJ_cutoff_potential(cutoff) 
+      {}
 };
 
 /*! \brief 6-12 Lennard-Jones pairwise potential with a cutoff radius

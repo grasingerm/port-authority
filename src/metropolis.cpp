@@ -54,6 +54,25 @@ metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
 
 }
 
+metropolis::metropolis(const char *fname, const size_t N,
+                       const size_t D, const double L,
+                       trial_move_generator tmg,
+                       abstract_potential* pot, const double T, 
+                       const double kB, metric m, bc boundary,
+                       acc acceptance, seed_gen sg) 
+    : _molecular_ids(N), _positions(D, N), _edge_lengths(D), _V(_pow(L, D)), 
+      _potentials(1, pot), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
+      _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
+      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _eps(0.0), _accepted(false) {
+ 
+  _edge_lengths.fill(L);
+  _dx.zeros();
+  _rng.seed(sg());
+  _edge_lengths.fill(L); 
+  _load_positions(fname, _positions, N, D, _molecular_ids);
+
+}
+
 metropolis metropolis::operator=(const metropolis &rhs) {
   if (this == &rhs) return *this;
 

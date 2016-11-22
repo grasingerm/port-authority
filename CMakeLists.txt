@@ -41,6 +41,8 @@ add_executable(spring_linear_kawasaki_suite examples/suite/spring_linear_kawasak
 add_executable(lj_liquid_Ar examples/lj/lj_liquid_Ar.cpp)
 add_executable(lj_liquid_Ar_debug examples/lj/lj_liquid_Ar_debug.cpp)
 add_executable(avg_pressure_liquid_Ar examples/lj/avg_pressure_liquid_Ar.cpp)
+add_executable(lj-lookup_liquid examples/lj-lookup/lj-lookup_liquid.cpp)
+add_executable(lj_liquid_Ar_cv examples/lj/lj_liquid_Ar_cv.cpp)
 
 if (UNIX)
     target_link_libraries(port_authority m)
@@ -48,7 +50,7 @@ if (UNIX)
     target_link_libraries(avg_pressure_liquid_Ar m)
 endif (UNIX)
 
-target_link_libraries(port_authority armadillo)
+target_link_libraries(port_authority armadillo yaml-cpp)
 target_link_libraries(spring_linear armadillo port_authority)
 target_link_libraries(spring_linear_mpi armadillo port_authority ${MPI_CXX_LIBRARIES})
 target_link_libraries(spring_linear_mpi_study armadillo port_authority ${MPI_CXX_LIBRARIES})
@@ -62,3 +64,5 @@ target_link_libraries(spring_linear_kawasaki_suite armadillo port_authority ${MP
 target_link_libraries(lj_liquid_Ar armadillo port_authority ${MPI_CXX_LIBRARIES})
 target_link_libraries(lj_liquid_Ar_debug armadillo port_authority ${MPI_CXX_LIBRARIES})
 target_link_libraries(avg_pressure_liquid_Ar armadillo port_authority ${MPI_CXX_LIBRARIES})
+target_link_libraries(lj-lookup_liquid armadillo port_authority ${MPI_CXX_LIBRARIES})
+target_link_libraries(lj_liquid_Ar_cv armadillo port_authority ${MPI_CXX_LIBRARIES})

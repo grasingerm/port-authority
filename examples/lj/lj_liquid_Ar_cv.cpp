@@ -14,11 +14,14 @@ using namespace pauth;
 int main(int argc, char* argv[]) {
 
   unsigned long nsteps, equilibration_steps, dsteps;
+  double c;
+
   switch(argc) {
     case 1: {
       nsteps = 100000;
       equilibration_steps = 10000;
       dsteps = 10;
+      c = 0.2;
       break;
     }
 
@@ -26,6 +29,7 @@ int main(int argc, char* argv[]) {
       nsteps = strtoul(argv[1], nullptr, 10);
       equilibration_steps = 10000;
       dsteps = 10;
+      c = 0.2;
       break;
     }
 
@@ -33,6 +37,7 @@ int main(int argc, char* argv[]) {
       nsteps = strtoul(argv[1], nullptr, 10);
       equilibration_steps = strtoul(argv[2], nullptr, 10);
       dsteps = 10;
+      c = 0.2;
       break;
     }
 
@@ -40,12 +45,21 @@ int main(int argc, char* argv[]) {
       nsteps = strtoul(argv[1], nullptr, 10);
       equilibration_steps = strtoul(argv[2], nullptr, 10);
       dsteps = strtoul(argv[3], nullptr, 10);
+      c = 0.2;
+      break;
+    }
+
+    case 5: {
+      nsteps = strtoul(argv[1], nullptr, 10);
+      equilibration_steps = strtoul(argv[2], nullptr, 10);
+      dsteps = strtoul(argv[3], nullptr, 10);
+      c = strtod(argv[4], nullptr);
       break;
     }
 
     default: {
       cout << "usage: " << argv[0] << " [nsteps = 100000] "
-              "[equilibration steps = 10000] [dsteps = 10]\n";
+              "[equilibration steps = 10000] [dsteps = 10] [c = 0.2]\n";
       return 1;
     }
   }
@@ -59,7 +73,7 @@ int main(int argc, char* argv[]) {
   const size_t D = 3;
   const double L = 7.4;
   const double a = L / pow(N, 1.0 / 3.0);
-  const double delta_max = 0.2 * a;
+  const double delta_max = c * a;
   const metric m = periodic_euclidean;
   const bc boundary = periodic_bc;
   const_well_params_LJ_cutoff_potential pot(1.0, 1.0, 2.5);
@@ -75,9 +89,17 @@ int main(int argc, char* argv[]) {
   unsigned long nsamples = 0;
   long double U_sum = 0.0;
   long double mds_sum = 0.0;
+  double U_k = 0.0;
+  bool first_call_flag = true;
+
   sim.add_callback([&](const metropolis &sim) {
     if (sim.step() % dsteps == 0) {
-      double U_k = accessors::U(sim);
+      if (first_call_flag) {
+        U_k = accessors::U(sim);
+        first_call_flag = false;
+      }
+
+      U_k += (sim.accepted()) ? sim.dU() : 0.0; // change in energy is cached
       U_sum += U_k;
       ++nsamples;
       double U_mean = U_sum / nsamples;

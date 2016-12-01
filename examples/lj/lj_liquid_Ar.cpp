@@ -11,21 +11,36 @@
 using namespace std;
 using namespace pauth;
 
+void print_help(char *program_name) {
+  cout << "usage: " << program_name << " [nsteps = 100000] "
+          "[equilibration steps = 10000] [dsteps = 10] [c = 0.2]\n";
+  return;
+}
+
 int main(int argc, char* argv[]) {
 
   unsigned long nsteps, equilibration_steps, dsteps;
+  double c;
+
   switch(argc) {
     case 1: {
       nsteps = 100000;
       equilibration_steps = 10000;
       dsteps = 10;
+      c = 0.2;
       break;
     }
 
     case 2: {
+      if (argv[1][0] == 'h') {
+        print_help(argv[0]);
+        return 1;
+      }
+
       nsteps = strtoul(argv[1], nullptr, 10);
       equilibration_steps = 10000;
       dsteps = 10;
+      c = 0.2;
       break;
     }
 
@@ -33,6 +48,7 @@ int main(int argc, char* argv[]) {
       nsteps = strtoul(argv[1], nullptr, 10);
       equilibration_steps = strtoul(argv[2], nullptr, 10);
       dsteps = 10;
+      c = 0.2;
       break;
     }
 
@@ -40,12 +56,20 @@ int main(int argc, char* argv[]) {
       nsteps = strtoul(argv[1], nullptr, 10);
       equilibration_steps = strtoul(argv[2], nullptr, 10);
       dsteps = strtoul(argv[3], nullptr, 10);
+      c = 0.2;
+      break;
+    }
+
+    case 5: {
+      nsteps = strtoul(argv[1], nullptr, 10);
+      equilibration_steps = strtoul(argv[2], nullptr, 10);
+      dsteps = strtoul(argv[3], nullptr, 10);
+      c = strtod(argv[4], nullptr);
       break;
     }
 
     default: {
-      cout << "usage: " << argv[0] << " [nsteps = 100000] "
-              "[equilibration steps = 10000] [dsteps = 10]\n";
+      print_help(argv[0]);
       return 1;
     }
   }
@@ -59,7 +83,7 @@ int main(int argc, char* argv[]) {
   const size_t D = 3;
   const double L = 6.8;
   const double a = L / pow(N, 1.0 / 3.0);
-  const double delta_max = 0.2 * a;
+  const double delta_max = c * a;
   const metric m = periodic_euclidean;
   const bc boundary = periodic_bc;
   const_well_params_LJ_cutoff_potential pot(1.0, 1.0, 2.5);

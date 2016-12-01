@@ -11,6 +11,12 @@
 using namespace std;
 using namespace pauth;
 
+void print_help(char *program_name) {
+  cout << "usage: " << program_name << " [nsteps = 100000] "
+          "[equilibration steps = 10000] [dsteps = 10] [c = 0.2]\n";
+  return;
+}
+
 int main(int argc, char* argv[]) {
 
   unsigned long nsteps, equilibration_steps, dsteps;
@@ -26,6 +32,11 @@ int main(int argc, char* argv[]) {
     }
 
     case 2: {
+      if (argv[1][0] == 'h') {
+        print_help(argv[0]);
+        return 1;
+      }
+
       nsteps = strtoul(argv[1], nullptr, 10);
       equilibration_steps = 10000;
       dsteps = 10;
@@ -58,8 +69,7 @@ int main(int argc, char* argv[]) {
     }
 
     default: {
-      cout << "usage: " << argv[0] << " [nsteps = 100000] "
-              "[equilibration steps = 10000] [dsteps = 10] [c = 0.2]\n";
+      print_help(argv[0]);
       return 1;
     }
   }
@@ -128,9 +138,10 @@ int main(int argc, char* argv[]) {
   cout << "            < U >   =   " << U_mean << '\n';
   cout << "< (U - < U >)^2 >   =   " << mds_mean << '\n';
   const double cvU = T*T * 3 * (N - 1) * kB / mds_mean;
-  cout << "             cv,U   =   " << cvU << '\n';
-  cout << "             cv     =   " << cvU + 1.5 << '\n';
-  cout << "        cv (J/kg-K) =   " << (cvU + 1.5) * 1.38064852 / (6.6e-3) << '\n';
+  cout << "            3cv,U   =   " << cvU << '\n';
+  cout << "            3cv     =   " << cvU + 1.5 << '\n';
+  cout << "       3cv (J/kg-K) =   " << (cvU + 1.5) * 1.38064852 / (6.6e-3) << '\n';
+  cout << "        cv (J/kg-K) =   " << (cvU + 1.5) * 1.38064852 / (6.6e-3) / 3.0 << '\n';
 
   return 0;
 }

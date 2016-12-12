@@ -11,6 +11,7 @@ class metropolis;
 class abstract_potential;
 
 using callback = std::function<void(const metropolis &)>;
+using stopping_criterion = std::function<bool(const metropolis &)>;
 using data_accessor = std::function<const arma::mat &(const metropolis &)>;
 using value_accessor = std::function<double(const metropolis &)>;
 

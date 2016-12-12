@@ -103,7 +103,7 @@ metropolis metropolis::operator=(const metropolis &rhs) {
   return *this;
 }
 
-void metropolis::simulate(const long unsigned nsteps) {
+long unsigned metropolis::simulate(const long unsigned nsteps) {
 
   // Process initial conditions
   #pragma omp parallel for schedule(dynamic)
@@ -146,7 +146,12 @@ void metropolis::simulate(const long unsigned nsteps) {
          cb_iter < _parallel_callbacks.cend(); ++cb_iter) (*cb_iter)(*this);
     
     for (const auto &cb : _sequential_callbacks) cb(*this);
+
+    for (const auto &sc : _stopping_criteria) if (sc(*this)) goto exit_loop;
   }
+
+exit_loop:
+  return _step;
 
 }
 

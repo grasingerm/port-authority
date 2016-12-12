@@ -17,6 +17,7 @@ if (OPENMP_FOUND)
 endif()
 
 find_package(MPI REQUIRED)
+find_package(Boost COMPONENTS program_options REQUIRED)
 
 set(CMAKE_BINARY_DIR build)
 set(LIBRARY_OUTPUT_PATH lib)
@@ -24,6 +25,7 @@ set(EXECUTABLE_OUTPUT_PATH bin)
 
 include_directories(include)
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+include_directories(${Boost_INCLUDE_DIR})
 
 file(GLOB libsources "src/*.cpp" "include/*.cpp")
 
@@ -43,11 +45,13 @@ add_executable(lj_liquid_Ar_debug examples/lj/lj_liquid_Ar_debug.cpp)
 add_executable(avg_pressure_liquid_Ar examples/lj/avg_pressure_liquid_Ar.cpp)
 add_executable(lj-lookup_liquid examples/lj-lookup/lj-lookup_liquid.cpp)
 add_executable(lj_liquid_Ar_cv examples/lj/lj_liquid_Ar_cv.cpp)
+add_executable(tst examples/spring/tst.cpp)
 
 if (UNIX)
     target_link_libraries(port_authority m)
     target_link_libraries(lj_liquid_Ar_debug m)
     target_link_libraries(avg_pressure_liquid_Ar m)
+    target_link_libraries(tst m)
 endif (UNIX)
 
 target_link_libraries(port_authority armadillo yaml-cpp)
@@ -66,3 +70,4 @@ target_link_libraries(lj_liquid_Ar_debug armadillo port_authority ${MPI_CXX_LIBR
 target_link_libraries(avg_pressure_liquid_Ar armadillo port_authority ${MPI_CXX_LIBRARIES})
 target_link_libraries(lj-lookup_liquid armadillo port_authority ${MPI_CXX_LIBRARIES})
 target_link_libraries(lj_liquid_Ar_cv armadillo port_authority ${MPI_CXX_LIBRARIES})
+target_link_libraries(tst armadillo port_authority ${Boost_LIBRARIES} ${MPI_CXX_LIBRARIES})

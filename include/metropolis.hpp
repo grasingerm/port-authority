@@ -246,6 +246,20 @@ public:
     add_sequential_callback(cb); 
   }
 
+  /*! \brief Add a stopping criterion
+   *
+   * \param   sc    Stopping criterion
+   */
+  inline void add_stopping_criterion(const stopping_criterion &sc) const { 
+    _stopping_criteria.push_back(sc); 
+  }
+
+  /*! \brief Clear all stopping criteria
+   */
+  inline void clear_stopping_criteria() const { 
+    _stopping_criteria.clear(); 
+  }
+
   /*! \brief Get current step
    *
    * \return    Current step
@@ -292,7 +306,7 @@ public:
    *
    * \param   nsteps    Number of steps to simulate
    */
-  void simulate(const long unsigned nsteps);
+  long unsigned simulate(const long unsigned nsteps);
 
   /*! \brief Set molecular positions
    *
@@ -345,6 +359,7 @@ private:
   acc _acc;
   mutable std::vector<callback> _parallel_callbacks;
   mutable std::vector<callback> _sequential_callbacks;
+  mutable std::vector<stopping_criterion> _stopping_criteria;
   long unsigned _step;
 
   arma::vec _dx;

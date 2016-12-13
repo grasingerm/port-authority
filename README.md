@@ -8,3 +8,4 @@ Parallel molecular simulation using the Markov chain Monte Carlo algorithm
 * [ ] Create front-end and input-file parser
 * [ ] Add more acceptance criteria
 * [ ] Add automated tests against analytical solutions
+* [ ] Consider utilizing GPUs

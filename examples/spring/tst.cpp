@@ -24,20 +24,34 @@ const unsigned MASTER = 0;
 
 int main(int argc, char* argv[]) {
 
-  unsigned numruns;
+  unsigned numruns, numinit, numthreads;
   unsigned long numsteps;
-  unsigned numinit;
+  double eps, delta_max;
+  string acc_criterion_str, outfile_str;
 
   options_description desc("\nTransition state theory assignment.\n\nAllowed arguments");
 
   desc.add_options()
     ("help,h", "Produce this help message.")
-    ("numruns,n", value<unsigned>(&numruns)->default_value(25), 
+    ("num-runs,n", value<unsigned>(&numruns)->default_value(25), 
      "Number of runs for each beta.")
-    ("numsteps,s", value<unsigned long>(&numsteps)->default_value(100000), 
+    ("num-steps,s", value<unsigned long>(&numsteps)->default_value(100000), 
      "Number of steps for each run.")
-    ("numinit,i", value<unsigned>(&numinit)->default_value(100), 
-     "Number of steps to run in A well for getting random initial conditions.");
+    ("num-init,i", value<unsigned>(&numinit)->default_value(100), 
+     "Number of steps to run in A well for getting random initial conditions.")
+    ("num-ompthreads,m", value<unsigned>(&numthreads)->default_value(1),
+     "Number of OpenMP threads.")
+    ("well-size,z", value<double>(&eps)->default_value(0.2), "Size of well A.")
+    ("max-step-size,x", value<double>(&delta_max)->default_value(1.25),
+     "Maximum trial move step size.")
+    ("acception-criterion,a", 
+     value<string>(&acc_criterion_str)->default_value("metropolis"), 
+     "Acceptance criterion (metropolis|kawasaki)")
+    ("outfile,o", value<string>(&outfile_str)->default_value("tst.csv"),
+     "Output filepath.");
+
+  // override OMP_NUM_THREADS env variable
+  omp_set_num_threads(numthreads);
 
   variables_map vm;
   try {
@@ -54,13 +68,21 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  ofstream ostr("tst.csv", ofstream::out);
+  acc acc_criterion_funct;
+  if (acc_criterion_str == "metropolis") acc_criterion_funct = metropolis_acc;
+  else if (acc_criterion_str == "kawasaki") 
+    acc_criterion_funct = kawasaki_acc;
+  else {
+    cerr << "Error: acceptance-criterion \"" << acc_criterion_str << "\" is "
+            "not understood.\n";
+    return -1;
+  }
+
+  ofstream ostr(outfile_str, ofstream::out);
   std::array<double, 5> Ts = { { 
     1.0 / 0.01, 1.0 / 0.1, 1.0, 1.0 / 10.0, 1.0 / 100.0
   } };
   const double kB = 1.0;
-  const double delta_max = 1.25;
-  const double eps = 0.2;
   const molecular_id id = molecular_id::Test1;
   const metric m = euclidean;
   const bc boundary = no_bc;
@@ -89,7 +111,7 @@ int main(int argc, char* argv[]) {
       // initialize
       metropolis sim("ktst.xyz", id, 1, 1, 1.0, continuous_trial_move(delta_max), 
                      &pot, T, kB, m, boundary, 
-                     metropolis_acc);
+                     acc_criterion_funct);
 
       // initialize to random point in well A
       sim.add_stopping_criterion([&](const metropolis &sim) -> bool {

@@ -97,7 +97,8 @@ int main(int argc, char* argv[]) {
 
   if (taskid == MASTER) ostr << "beta,M,N,<d(x-q)>,ktst\n";
 
-  default_random_engine rng(random_device()() + taskid);
+  random_device rd;
+  default_random_engine rng(rd() + taskid);
   uniform_real_distribution<double> dist(0.0, 1.0);
 
   for (auto T : Ts) {

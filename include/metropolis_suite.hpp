@@ -67,6 +67,14 @@ public:
     return _averages;
   }
 
+  /*! \brief Suite variables
+   *
+   * \return      Suite variables
+   */
+  inline const auto& global_variables() const {
+    return _global_variables;
+  }
+
   /*! \brief Report suite variable averages
    */
   void report_averages() const;

@@ -6,6 +6,7 @@
 #include <exception>
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <vector>
 #include "port_authority.hpp"
 
 using namespace std;
@@ -43,8 +44,8 @@ int main(int argc, char* argv[]) {
     ("delta,d", value<double>(&delta_max)->default_value(2.0), "Maximum step size.")
     ("num-steps,n", value<size_t>(&nsteps)->default_value(100000), "Number of steps.")
     ("dx,e", value<double>(&dx)->default_value(0.1), "Threshold size for "
-      "approximating <dirac_delta(x - x0)> which is used to approximate Z.");
-    //("plot-histogram,p", "Plot histogram.");
+      "approximating <dirac_delta(x - x0)> which is used to approximate Z.")
+    ("plot-histogram,p", "Plot histogram.");
 
   variables_map vm;
   try {
@@ -74,12 +75,19 @@ int main(int argc, char* argv[]) {
   const metric m = euclidean;
   const bc boundary = no_bc;
   const_k_spring_potential pot(sk);
+  vector<double> xs;
   
   metropolis sim(id, N, D, L, continuous_trial_move(delta_max), 
                  &pot, T, kB, m, boundary, metropolis_acc, 
                  hardware_entropy_seed_gen, true);
   sim.positions()(0, 0) = x0;
   const double u0 = accessors::U(sim);
+
+  if (vm.count("plot-histogram")) {
+    sim.add_callback([&](const metropolis &sim) -> void {
+      xs.push_back(sim.positions()(0, 0));
+    });
+  }
 
   metropolis_suite msuite(sim, 0, 1, info_lvl_flag::PROFILE);
 
@@ -110,6 +118,10 @@ int main(int argc, char* argv[]) {
     cout << "Z        =     " << (2.0 * dx * exp(-u0 / (kB * T)) 
                                   / averages["delta(x - x0)"]) << '\n';
     cout << "Z (an)   =     " << sqrt(2.0 * M_PI * kB * T / sk) << '\n';
+
+    if (vm.count("plot-histogram")) {
+      throw "Not yet implemented.";
+    }
   }
 
   MPI_Finalize();

@@ -442,15 +442,14 @@ double dipole_electric_potential::_delta_U(const metropolis &sim,
 
   double sum = 0.0;
   for (auto& kv : _efield)
-    sum += -(positionsj(kv.first) * kv.second(positionsj));
+    sum += -(dx(kv.first) * kv.second(positionsj));
 
   return sum;
   
 }
 
-arma::vec _forceij(const metropolis &sim, const size_t i, const size_t j) const {
-  return arma::zeros<double>(sim.D());
-}
+arma::vec dipole_electric_potential::_forceij(const metropolis &sim, 
+    const size_t, const size_t) const { return arma::zeros(sim.D()); }
 
 // definitions for pure virtual destructors
 abstract_potential::~abstract_potential() {}

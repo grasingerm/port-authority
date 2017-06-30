@@ -9,6 +9,7 @@
 #include <functional>
 #include <armadillo>
 #include <stdexcept>
+#include <boost/range/combine.hpp>
 #include "pauth_types.hpp"
 #include "molecular.hpp"
 
@@ -462,8 +463,12 @@ public:
       throw std::invalid_argument("E field function list and dof list should "
                                   "be of the same length");
 
-    for(unsigned i = 0; i < Es.size(); ++i)
-      _efield[dof_idxs[i]] = [&Es](const arma::vec&) { return Es[i]; };
+    for(auto tup : boost::combine(dof_idxs, Es)) {
+      unsigned idx;
+      double E;
+      boost::tie(idx, E) = tup;
+      _efield[idx] = [E](const arma::vec&) { return E; };
+    }
   }
 
   /*! \brief Potential of a dipole in an electric field
@@ -480,7 +485,8 @@ public:
       throw std::invalid_argument("E field function list and dof list should "
                                   "be of the same length");
 
-    for(unsigned i = 0; i < Es.size(); ++i) _efield[dof_idxs[i]] = Es[i];
+    for(auto tup : boost::combine(dof_idxs, Es)) 
+      _efield[boost::get<0>(tup)] = boost::get<1>(tup); 
 
   }
 
@@ -504,8 +510,8 @@ private:
   virtual double _U(const metropolis &sim) const;
   virtual double _delta_U(const metropolis &sim, const size_t j, 
                           arma::vec &dx) const;
-  virtual arma::vec _forceij(const metropolis &sim, const size_t i, 
-                             const size_t j) const;
+  virtual arma::vec _forceij(const metropolis &sim, const size_t, 
+                             const size_t) const;
 
   std::function<arma::mat(const arma::vec&)> _inv_chi;
 };

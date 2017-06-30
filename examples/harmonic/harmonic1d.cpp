@@ -112,6 +112,7 @@ int main(int argc, char* argv[]) {
     const double exp_xsq = averages["x^2"];
     cout << "<x>      =     " << exp_x << '\n';
     cout << "<x^2>    =     " << exp_xsq << '\n';
+    cout << "kT/k     =     " << kB * T / sk << '\n';
     cout << "Delta x  =     " << sqrt(exp_xsq - exp_x*exp_x) << '\n';
     cout << "<E>      =     " << averages["U"] << '\n';
     cout << "kT / 2   =     " << kB * T / 2.0 << '\n';

@@ -418,6 +418,40 @@ double abstract_LJ_lookup_potential::_get_rzero(const molecular_id id1,
   return _rzero_map.at(key);
 }
 
+double dipole_electric_potential::_U(const metropolis &sim) const {
+
+  const auto N = sim.N();
+  const auto &positions = sim.positions();
+  double sum = 0.0;
+
+  #pragma omp parallel for reduction(+:sum)
+  for (auto i = size_t{0}; i < N; ++i) {
+    auto& positionsi = positions.col(i);
+    for (auto& kv : _efield)
+      sum += -(positionsi(kv.first) * kv.second(positionsi));
+  }
+
+  return sum;
+
+}
+
+double dipole_electric_potential::_delta_U(const metropolis &sim, 
+  const size_t j, arma::vec &dx) const {
+
+  auto& positionsj = sim.positions().col(j);
+
+  double sum = 0.0;
+  for (auto& kv : _efield)
+    sum += -(positionsj(kv.first) * kv.second(positionsj));
+
+  return sum;
+  
+}
+
+arma::vec _forceij(const metropolis &sim, const size_t i, const size_t j) const {
+  return arma::zeros<double>(sim.D());
+}
+
 // definitions for pure virtual destructors
 abstract_potential::~abstract_potential() {}
 abstract_LJ_potential::~abstract_LJ_potential() {}

@@ -5,7 +5,10 @@
 #include <stdexcept>
 #include <vector>
 #include <unordered_map>
+#include <map>
+#include <functional>
 #include <armadillo>
+#include <stdexcept>
 #include "pauth_types.hpp"
 #include "molecular.hpp"
 
@@ -431,6 +434,80 @@ private:
             static_cast<unsigned>(x(0)) == 1);
   }
   arma::vec _forceij(const metropolis &sim, const size_t, const size_t) const;
+};
+
+/*! Potential of a dipole in an electric field
+ */
+class dipole_electric_potential : public abstract_potential {
+public:
+  /*! \brief Potential of a dipole in a (constant) electric field
+   *
+   * \param   E0        Magnitude of electric field
+   * \param   dof_idx   Index of the degree of freedom of the E field
+   * \return            Potential of a dipole in a (constant) electric field
+   */
+  dipole_electric_potential(const double E0, const unsigned dof_idx = 2) {
+    _efield[dof_idx] = [E0](const arma::vec&) { return E0; };
+  }
+
+  /*! \brief Potential of a dipole in a (constant) electric field
+   *
+   * \param   E0        Magnitude of electric field
+   * \param   dof_idx   Index of the degree of freedom of the E field
+   * \return            Potential of a dipole in a (constant) electric field
+   */
+  dipole_electric_potential(const std::initializer_list<double> Es, 
+                            const std::initializer_list<unsigned> dof_idxs) {
+    if (Es.size() != dof_idxs.size()) 
+      throw std::invalid_argument("E field function list and dof list should "
+                                  "be of the same length");
+
+    for(unsigned i = 0; i < Es.size(); ++i)
+      _efield[dof_idxs[i]] = [&Es](const arma::vec&) { return Es[i]; };
+  }
+
+  /*! \brief Potential of a dipole in an electric field
+   *
+   * \param   Es        Components of electric field
+   * \param   dox_idxs  Indexes of the degree of freedom of the E field
+   * \return            Potential of a dipole in an electric field
+   */
+  dipole_electric_potential(std::initializer_list<
+      std::function<double(const arma::vec&)> > Es, 
+      std::initializer_list<unsigned> dof_idxs) {
+
+    if (Es.size() != dof_idxs.size()) 
+      throw std::invalid_argument("E field function list and dof list should "
+                                  "be of the same length");
+
+    for(unsigned i = 0; i < Es.size(); ++i) _efield[dof_idxs[i]] = Es[i];
+
+  }
+
+private:
+  virtual double _U(const metropolis &sim) const;
+  virtual double _delta_U(const metropolis &sim, const size_t j, 
+                          arma::vec &dx) const;
+  virtual arma::vec _forceij(const metropolis &sim, const size_t i, 
+                             const size_t j) const;
+
+  std::map<unsigned, std::function<double(const arma::vec&)>> _efield;
+};
+
+/*! Potential of a dipole in an electric field
+ */
+class dipole_strain_potential : public abstract_potential {
+public:
+  
+
+private:
+  virtual double _U(const metropolis &sim) const;
+  virtual double _delta_U(const metropolis &sim, const size_t j, 
+                          arma::vec &dx) const;
+  virtual arma::vec _forceij(const metropolis &sim, const size_t i, 
+                             const size_t j) const;
+
+  std::function<arma::mat(const arma::vec&)> _inv_chi;
 };
 
 } // namespace pauth

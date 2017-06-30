@@ -1,5 +1,5 @@
 # port-authority
-Parallel molecular simulation using the Markov chain Monte Carlo algorithm
+Parallel molecular simulation using Monte Carlo
 
 # TODOS
 * [x] Refactor trial move generation so that it is handled by a functor with its own distribution

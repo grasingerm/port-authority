@@ -4,10 +4,14 @@
 #include <armadillo>
 #include <random>
 #include <cmath>
+#include <vector>
+#include <initializer_list>
 #include "seed.hpp"
 
 namespace pauth {
 
+/*! \brief Trial move for continuous degrees of freedom e.g. positions in space
+ */
 class continuous_trial_move {
 public:
   /*! \brief Trial move generator for a continuous monte carlo phase space
@@ -46,6 +50,8 @@ private:
   std::default_random_engine _rng;
 };
 
+/*! \brief Trial move for discrete states as opposed to continuous positions
+ */
 class state_trial_move {
 public:
   /*! \brief Trial move generator for a phase space that consists of "states"
@@ -81,6 +87,54 @@ public:
 
 private:
   std::uniform_int_distribution<unsigned> _state_dist;
+  std::default_random_engine _rng;
+};
+
+/*! \brief Direct sampling trial move generator
+ */
+template <class T> class direct_sample {
+public:
+  /*! \brief Trial move generator for direct sampling by distributions
+   *
+   * \param     dists          Sampling distributions
+   * \param     sg             Seed generator
+   * \return                   Trial move generator
+   */
+  direct_sample<T>(std::initializer_list<T> dists, 
+                   seed_gen sg = _default_seed_gen) : _dof_dists(dists),
+    _choice_dist(0, _dof_dists.size()-1) {
+    _rng.seed(sg());
+  }
+
+  /*! \brief Trial move generator for direct sampling by a distribution
+   *
+   * \param     dist           Sampling distribution
+   * \param     N              Degrees of freedom per particle
+   * \param     sg             Seed generator
+   * \return                   Trial move generator
+   */
+  direct_sample<T>(T dist, size_t N, seed_gen sg = _default_seed_gen) : 
+    _dof_dists(dist, N), _choice_dist(0, _dof_dists.size()-1) { 
+    _rng.seed(sg()); 
+  }
+
+  /*! \brief Generates trial move for a two-state system
+   *
+   * \param     positions     Molecular positions
+   * \param     j             Index of molecule to move
+   * \return                  Trial move
+   */
+  arma::vec operator()(const arma::mat &positions, const size_t j) {
+    auto dx = arma::zeros<arma::vec>(_dof_dists.size());
+    auto choice = _rng(_choice_dist); // choose a degree of freedom
+    // directly sample a degree of freedom from its associated distribution
+    dx(choice) = _rng(_dof_dists(choice)) - positions(choice, j);
+    return dx;
+  }
+
+private:
+  std::vector<T> _dof_dists;
+  std::uniform_int_distribution<size_t> _choice_dist;
   std::default_random_engine _rng;
 };
 

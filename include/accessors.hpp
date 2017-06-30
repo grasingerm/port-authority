@@ -29,7 +29,7 @@ inline auto step(const metropolis &sim) { return sim.step(); }
  * \param     sim     Metropolis simulation object
  * \return            Potential energy
  */
-double U(const metropolis &sim);
+inline double U(const metropolis &sim) { return sim.U(); }
 
 /*! \brief Get ideal gas pressure of simulation
  *

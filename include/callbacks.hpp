@@ -385,20 +385,23 @@ const static unsigned _p = 3; //!< to be used in print_trajectory_callback
  * \param   dstep         Frequency with which to print trajectory information
  * \param   ostr          Output stream
  * \param   print_header  Print header for tabulated trajectory values
+ * \param   ndofs         Number of degrees of freedom (for header)
  * \return                Callback for printing trajectories
  */
 auto print_trajectory_callback(const unsigned dstep = 1, 
                                std::ostream &ostr = std::cout,
-                               const bool print_header = true) {
+                               const bool print_header = true,
+                               const size_t ndofs = 3) {
   if (dstep < 1) throw std::invalid_argument(std::string("Frequency with which "
                  "to print trajectory information must be positive. ") + 
                  std::to_string(dstep) + std::string(" is not positive.")); 
 
   if (print_header)
-    ostr << std::setw(3*_w+2) << 'x' << ' ' 
-         << std::setw(3*_w+2) << "dx" << ' '
+    ostr << std::setw(ndofs*_w+2) << 'x' << ' ' 
+         << std::setw(ndofs*_w+2) << "dx" << ' '
          << std::setw(_w) << "choice" << ' '
          << std::setw(_w) << "dU" << ' '
+         << std::setw(_w) << "U" << ' '
          << std::setw(_w) << "eps" << ' '
          << std::setw(_w) << "accept" << ' '
          << '\n';
@@ -416,6 +419,7 @@ auto print_trajectory_callback(const unsigned dstep = 1,
 
       ostr << std::setw(_w) << sim.choice() << ' '
            << std::setw(_w) << std::setprecision(_p) << sim.dU() << ' '
+           << std::setw(_w) << std::setprecision(_p) << sim.U() << ' '
            << std::setw(_w) << std::setprecision(_p) << sim.eps() << ' '
            << std::setw(_w) << sim.accepted() << ' '
            << '\n';

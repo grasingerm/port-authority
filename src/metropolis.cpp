@@ -21,8 +21,8 @@ metropolis::metropolis(const molecular_id id, const size_t N, const size_t D,
     : _molecular_ids(N, id), _positions(D, N), _edge_lengths(D), _V(_pow(L, D)), 
       _potentials(1, pot), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
       _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
-      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _eps(0.0), 
-      _accepted(false) {
+      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0),  _U(0.0), 
+      _eps(0.0), _accepted(false) {
 
   _edge_lengths.fill(L);
   _dx.zeros();
@@ -33,6 +33,7 @@ metropolis::metropolis(const molecular_id id, const size_t N, const size_t D,
   else
     _init_positions_lattice(_positions, N, D, _edge_lengths);
 
+  update_U(); 
 }
 
 metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
@@ -44,7 +45,8 @@ metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
     : _molecular_ids(N, id), _positions(D, N), _edge_lengths(D), _V(_pow(L, D)), 
       _potentials(1, pot), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
       _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
-      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _eps(0.0), _accepted(false) {
+      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _U(0.0), 
+      _eps(0.0), _accepted(false) {
  
   _edge_lengths.fill(L);
   _dx.zeros();
@@ -52,6 +54,7 @@ metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
   _edge_lengths.fill(L); 
   _load_positions(fname, _positions, N, D);
 
+  update_U(); 
 }
 
 metropolis::metropolis(const char *fname, const size_t N,
@@ -63,7 +66,8 @@ metropolis::metropolis(const char *fname, const size_t N,
     : _molecular_ids(N), _positions(D, N), _edge_lengths(D), _V(_pow(L, D)), 
       _potentials(1, pot), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
       _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
-      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _eps(0.0), _accepted(false) {
+      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _U(0.0),
+      _eps(0.0), _accepted(false) {
  
   _edge_lengths.fill(L);
   _dx.zeros();
@@ -71,6 +75,7 @@ metropolis::metropolis(const char *fname, const size_t N,
   _edge_lengths.fill(L); 
   _load_positions(fname, _positions, N, D, _molecular_ids);
 
+  update_U(); 
 }
 
 metropolis metropolis::operator=(const metropolis &rhs) {
@@ -97,10 +102,20 @@ metropolis metropolis::operator=(const metropolis &rhs) {
   _dx = rhs._dx;
   _choice = rhs._choice;
   _dU = rhs._dU;
+  _U = rhs._U;
   _eps = rhs._eps;
   _accepted = rhs._accepted;
 
   return *this;
+}
+
+void metropolis::update_U() {
+  double Uinit = 0.0;
+  #pragma omp parallel for reduction(+:Uinit) schedule(dynamic)
+  for (auto pot_iter = _potentials.cbegin(); pot_iter < _potentials.cend();
+       ++pot_iter)
+    Uinit += (*pot_iter)->U(*this);
+  _U = Uinit;
 }
 
 long unsigned metropolis::simulate(const long unsigned nsteps) {
@@ -112,7 +127,7 @@ long unsigned metropolis::simulate(const long unsigned nsteps) {
   
   for (const auto &cb : _sequential_callbacks) cb(*this);
 
-  // Run simulation
+    // Run simulation
   for (; _step < nsteps; ++_step) {
     // generator trial move and molecule choice
     _choice = _choice_dist(_rng);
@@ -137,7 +152,10 @@ long unsigned metropolis::simulate(const long unsigned nsteps) {
       // do we accept or reject this move?
       _accepted = _acc(*this, _dU, (_eps = _eps_dist(_rng)));
       // make move while simultaneously implementing boundary conditions
-      if (_accepted) _positions.col(_choice) = new_x;
+      if (_accepted) {
+        _positions.col(_choice) = new_x;
+        _U += _dU;
+      }
     }
 
     // post-processing and processing
@@ -147,6 +165,7 @@ long unsigned metropolis::simulate(const long unsigned nsteps) {
     
     for (const auto &cb : _sequential_callbacks) cb(*this);
 
+    // check to see if stopping criteria has been met
     for (const auto &sc : _stopping_criteria) if (sc(*this)) goto exit_loop;
   }
 

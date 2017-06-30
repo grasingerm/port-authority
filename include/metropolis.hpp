@@ -128,7 +128,7 @@ public:
       _tmg(sim._tmg), _acc(sim._acc), 
       _parallel_callbacks(sim._parallel_callbacks), 
       _sequential_callbacks(sim._sequential_callbacks), _step(sim._step),
-      _dx(sim._dx), _choice(sim._choice), _dU(sim._dU), _eps(sim._eps),
+      _dx(sim._dx), _choice(sim._choice), _dU(sim._dU), _U(sim._U), _eps(sim._eps),
       _accepted(sim._accepted) { _rng.seed(sg()); }
 
   /*! \brief Assignment operator
@@ -137,6 +137,10 @@ public:
    * \return            Self
    */
   metropolis operator=(const metropolis &rhs); 
+
+  /*! \brief Update the (cached) system energy
+   */
+  void update_U();
 
   /*! \brief Get number of molecules
    *
@@ -289,6 +293,12 @@ public:
    * \return      Change in energy as a result of trial move
    */
   inline const auto &dU() const { return _dU; }
+  
+  /*! \brief Accessor for the current system energy
+   *
+   * \return      System energy
+   */
+  inline const auto &U() const { return _U; }
 
   /*! \brief Accessor for random number used to determine acceptance/rejection
    *
@@ -365,6 +375,7 @@ private:
   arma::vec _dx;
   size_t _choice;
   double _dU;
+  double _U;
   double _eps;
   bool _accepted;
 };

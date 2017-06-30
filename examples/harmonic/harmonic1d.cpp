@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
     });
   }
 
-  metropolis_suite msuite(sim, 0, 1, info_lvl_flag::PROFILE);
+  metropolis_suite msuite(sim, 0, 1, info_lvl_flag::VERBOSE);
 
   msuite.add_variable_to_average("x", [](const metropolis &sim) {
     return sim.positions()(0, 0);

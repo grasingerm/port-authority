@@ -4,13 +4,6 @@
 namespace pauth { 
 namespace accessors {
 
-double U(const metropolis &sim) {
-  double U_sum = 0.0;
-  for (const auto &potential : sim.potentials())
-    U_sum += potential->U(sim);
-  return U_sum;
-}
-
 double virial_pressure(const metropolis &sim) {
   const auto n = sim.N();
   const auto &positions = sim.positions();

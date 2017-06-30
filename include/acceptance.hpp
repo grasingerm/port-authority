@@ -25,7 +25,18 @@ bool metropolis_acc(const metropolis &sim, const double dU, const double eps);
  * \return            Answer to: do we accept this move?
  */
 bool kawasaki_acc(const metropolis &sim, const double dU, 
-                  const double eps); 
+                  const double eps);
+
+/*! \brief Unconditional acceptance
+ *
+ * \param             Metropolis simulation object
+ * \param             Change of energy that results from move
+ * \param             Random number to determine acceptance
+ * \return            True
+ */
+inline bool unconditional_acc(const metropolis&, const double, const double) {
+  return true;
+}
 
 }
 

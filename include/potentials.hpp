@@ -502,9 +502,28 @@ private:
 
 /*! Potential of a dipole in an electric field
  */
-class dipole_strain_potential : public abstract_potential {
+class abstract_dipole_strain_potential : public abstract_potential {
 public:
-  
+  virtual ~abstract_dipole_strain_potential() = 0;
+
+  /*! \brief Inverse of the susceptibility tensor
+   *
+   * \param   xs    Degrees of freedom of dipole
+   * \param   id    Molecular id of the particle
+   * \return        Inverse susceptibility
+   */
+  inline arma::mat inv_chi(const arma::vec& xs, const molecular_id id) const {
+    return _inv_chi(xs, id);
+  }
+
+  /*! \brief Polarization vector
+   *
+   * \param   xs    Degrees of freedom of dipole
+   * \return        Polarization vector
+   */
+  inline arma::vec p(const arma::vec& xs) const {
+    return _p(xs);
+  }
 
 private:
   virtual double _U(const metropolis &sim) const;
@@ -512,8 +531,67 @@ private:
                           arma::vec &dx) const;
   virtual arma::vec _forceij(const metropolis &sim, const size_t, 
                              const size_t) const;
+  virtual arma::mat _inv_chi(const arma::vec& xs, 
+                             const molecular_id id) const = 0;
+  virtual arma::vec _p(const arma::vec& xs) const = 0;
+};
 
-  std::function<arma::mat(const arma::vec&)> _inv_chi;
+/*! Dipole in 2D space
+ */
+class abstract_dipole_strain_2d_potential : 
+  public abstract_dipole_strain_potential {
+public:
+  virtual ~abstract_dipole_strain_2d_potential()=0;
+private:
+  arma::vec _p(const arma::vec& xs) {
+    return arma::vec(xs.memptr(), 2);
+  }
+};
+
+/*! Dipole in 3D space
+ */
+class abstract_dipole_strain_3d_potential :
+  public absstract_dipole_strain_potential {
+public:
+  virtual ~abstract_dipole_strain_3d_potential()=0;
+private:
+  arma::vec _p(const arma::vec& xs) {
+    return arma::vec(xs.memptr(), 3);
+  }
+};
+
+/*! Dipole whose susceptibility does not depend on space, direction, etc.
+ */
+class abstract_dipole_strain_linear_potential :
+  public abstract_dipole_strain_potential {
+public:
+  virtual ~abstract_dipole_strain_linear_potential()=0;
+
+  abstract_dipole_strain_linear_potential(arma::mat& inv_chi) 
+    : _const_inv_chi(inv_chi) {}
+
+private:
+  arma::mat _inv_chi(const arma::vec&, const molecular_id) const {
+    return _const_inv_chi;
+  }
+
+  arma::mat _const_inv_chi;
+};
+
+class dipole_strain_linear_2d_potential :
+  public abstract_dipole_strain_2d_potential,
+  public abstract_dipole_strain_linear_potential {
+public:
+  dipole_strain_linear_2d_potential(arma::mat& inv_chi)
+    : abstract_dipole_strain_linear_potential(inv_chi) {}
+};
+
+class dipole_strain_linear_3d_potential :
+  public abstract_dipole_strain_3d_potential,
+  public abstract_dipole_strain_linear_potential {
+public:
+  dipole_strain_linear_3d_potential(arma::mat& inv_chi)
+    : abstract_dipole_strain_linear_potential(inv_chi) {}
 };
 
 } // namespace pauth

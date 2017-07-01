@@ -451,6 +451,46 @@ double dipole_electric_potential::_delta_U(const metropolis &sim,
 arma::vec dipole_electric_potential::_forceij(const metropolis &sim, 
     const size_t, const size_t) const { return arma::zeros(sim.D()); }
 
+double abstract_dipole_strain_potential::_U(const metropolis &sim) const {
+  
+  const auto N = sim.N();
+  const auto &positions = sim.positions();
+  double sum = 0.0;
+
+  #pragma omp parallel for reduction(+:sum)
+  for (auto i = size_t{0}; i < N; ++i) {
+
+    auto& xsi = positions.col(i);
+    auto pi = p(xsi);
+
+    // Ui = 1/2 * p . X p
+    sum += arma::dot(p, inv_chi(xsi) * p);
+
+  }
+
+  return 0.5 * sum;
+
+}
+
+double abstract_dipole_strain_potential::_dU(const metropolis &sim, 
+    const size_t j, arma::vec &dx) const {
+
+  auto& xs = positions.col(i);
+  auto xs_new = xs + dx;
+
+  auto pi = p(xs);
+  auto pnew = p(xs_new);
+
+  return 0.5 * (arma::dot(pi, inv_chi(xs) * p) - 
+                arma::dot(pnew, inv_chi(xs_new) * pnew));
+
+}
+
+arma::vec abstract_dipole_strain_potential::_forceij
+  (const metropolis &sim, const size_t, const size_t) const {
+  return arma::zeros(sim.D()); 
+}
+
 // definitions for pure virtual destructors
 abstract_potential::~abstract_potential() {}
 abstract_LJ_potential::~abstract_LJ_potential() {}
@@ -458,5 +498,9 @@ abstract_LJ_full_potential::~abstract_LJ_full_potential() {}
 abstract_LJ_lookup_potential::~abstract_LJ_lookup_potential() {}
 abstract_LJ_cutoff_potential::~abstract_LJ_cutoff_potential() {}
 abstract_spring_potential::~abstract_spring_potential() {}
+abstract_dipole_strain_potential::~abstract_dipole_strain_potential() {}
+abstract_dipole_strain_2d_potential::~abstract_dipole_strain_2d_potential() {}
+abstract_dipole_strain_3d_potential::~abstract_dipole_strain_3d_potential() {}
+abstract_dipole_strain_linear_potential::~abstract_dipole_strain_linear_potential() {}
 
 } // namespace pauth

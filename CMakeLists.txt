@@ -9,6 +9,10 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -pedantic -pedantic-errors")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
+if(CMAKE_BUILD_TYPE MATCHES "Release")
+  add_definitions(-DARMA_NO_DEBUG)
+endif(CMAKE_BUILD_TYPE MATCHES "Release")
+
 # use OpenMP if compiler supports it
 find_package(OpenMP)
 if (OPENMP_FOUND)

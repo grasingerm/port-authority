@@ -406,7 +406,7 @@ private:
   std::vector<double> fcoeffs;
 };
 
-/*! Two state potential with interactions between molecules
+/*! \brief Two state potential with interactions between molecules
  */
 class twostate_int_potential : public abstract_potential {
 public:
@@ -437,7 +437,7 @@ private:
   arma::vec _forceij(const metropolis &sim, const size_t, const size_t) const;
 };
 
-/*! Potential of a dipole in an electric field
+/*! \brief Potential of a dipole in an electric field
  */
 class dipole_electric_potential : public abstract_potential {
 public:
@@ -500,7 +500,7 @@ private:
   std::map<unsigned, std::function<double(const arma::vec&)>> _efield;
 };
 
-/*! Potential of a dipole in an electric field
+/*! \brief Potential of a dipole in an electric field
  */
 class abstract_dipole_strain_potential : public abstract_potential {
 public:
@@ -536,7 +536,7 @@ private:
   virtual arma::vec _p(const arma::vec& xs) const = 0;
 };
 
-/*! Dipole in 2D space
+/*! \brief Dipole in 2D space
  */
 class abstract_dipole_strain_2d_potential : 
   public abstract_dipole_strain_potential {
@@ -548,10 +548,10 @@ private:
   }
 };
 
-/*! Dipole in 3D space
+/*! \brief Dipole in 3D space
  */
 class abstract_dipole_strain_3d_potential :
-  public absstract_dipole_strain_potential {
+  public abstract_dipole_strain_potential {
 public:
   virtual ~abstract_dipole_strain_3d_potential()=0;
 private:
@@ -560,7 +560,7 @@ private:
   }
 };
 
-/*! Dipole whose susceptibility does not depend on space, direction, etc.
+/*! \brief Dipole whose susceptibility does not depend on space, direction, etc.
  */
 class abstract_dipole_strain_linear_potential :
   public abstract_dipole_strain_potential {
@@ -578,6 +578,8 @@ private:
   arma::mat _const_inv_chi;
 };
 
+/*! \brief Dipole, in 2D space, whose susceptibility tensor is linear
+ */
 class dipole_strain_linear_2d_potential :
   public abstract_dipole_strain_2d_potential,
   public abstract_dipole_strain_linear_potential {
@@ -586,12 +588,53 @@ public:
     : abstract_dipole_strain_linear_potential(inv_chi) {}
 };
 
+/*! \brief Dipole, in 3D space, whose susceptibility tensor is linear
+ */
 class dipole_strain_linear_3d_potential :
   public abstract_dipole_strain_3d_potential,
   public abstract_dipole_strain_linear_potential {
 public:
   dipole_strain_linear_3d_potential(arma::mat& inv_chi)
     : abstract_dipole_strain_linear_potential(inv_chi) {}
+};
+
+/*! \brief Dipole, in 2D space, whose susceptibility tensor is nonlinear
+ */
+class dipole_strain_nonlinear_2d_potential : 
+  public abstract_dipole_strain_2d_potential {
+public:
+  dipole_strain_nonlinear_2d_potential(std::function<arma::mat(const arma::vec&,
+    const molecular_id)> inv_chi_f) : _inv_chi_f(inv_chi_f) {}
+private:
+  arma::mat _inv_chi(const arma::vec& xs, const molecular_id id) const {
+    const double theta = xs(2);
+    arma::vec n({std::cos(theta), std::sin(theta)});
+    return _inv_chi_f(n, id);
+  }
+
+  std::function<arma::mat(const arma::vec&, const molecular_id)> _inv_chi_f;
+};
+
+/*! \brief Dipole, in 3D space, whose susceptibility tensor is nonlinear
+ */
+class dipole_strain_nonlinear_3d_potential : 
+  public abstract_dipole_strain_3d_potential {
+public:
+  dipole_strain_nonlinear_3d_potential(std::function<arma::mat(const arma::vec&,
+    const molecular_id)> inv_chi_f) : _inv_chi_f(inv_chi_f) {}
+private:
+  arma::mat _inv_chi(const arma::vec& xs, const molecular_id id) const {
+    const double phi = xs(3);
+    const double theta = xs(4);
+    const double cp = std::cos(phi);
+    const double sp = std::sin(phi);
+    const double ct = std::cos(theta);
+    const double st = std::sin(theta);
+    arma::vec n({cp * st, sp * st, ct});
+    return _inv_chi_f(n, id);
+  }
+
+  std::function<arma::mat(const arma::vec&, const molecular_id)> _inv_chi_f;
 };
 
 } // namespace pauth

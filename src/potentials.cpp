@@ -455,6 +455,7 @@ double abstract_dipole_strain_potential::_U(const metropolis &sim) const {
   
   const auto N = sim.N();
   const auto &positions = sim.positions();
+  const auto &ids = sim.molecular_ids();
   double sum = 0.0;
 
   #pragma omp parallel for reduction(+:sum)
@@ -464,7 +465,7 @@ double abstract_dipole_strain_potential::_U(const metropolis &sim) const {
     auto pi = p(xsi);
 
     // Ui = 1/2 * p . X p
-    sum += arma::dot(p, inv_chi(xsi) * p);
+    sum += arma::dot(pi, inv_chi(xsi, ids[i]) * pi);
 
   }
 
@@ -472,17 +473,18 @@ double abstract_dipole_strain_potential::_U(const metropolis &sim) const {
 
 }
 
-double abstract_dipole_strain_potential::_dU(const metropolis &sim, 
+double abstract_dipole_strain_potential::_delta_U(const metropolis &sim, 
     const size_t j, arma::vec &dx) const {
 
-  auto& xs = positions.col(i);
+  auto& xs = sim.positions().col(j);
+  const auto id = sim.molecular_ids()[j];
   auto xs_new = xs + dx;
 
   auto pi = p(xs);
   auto pnew = p(xs_new);
 
-  return 0.5 * (arma::dot(pi, inv_chi(xs) * p) - 
-                arma::dot(pnew, inv_chi(xs_new) * pnew));
+  return 0.5 * (arma::dot(pi, inv_chi(xs, id) * pi) - 
+                arma::dot(pnew, inv_chi(xs_new, id) * pnew));
 
 }
 

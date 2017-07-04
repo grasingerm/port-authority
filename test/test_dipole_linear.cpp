@@ -3,11 +3,13 @@
 #include <cstdlib>
 #include <ctime>
 #include <random>
+#include <armadillo>
 #include "port_authority.hpp"
 #include "mpi.h"
 
 using namespace std;
 using namespace pauth;
+using namespace arma;
 
 int main() {
     
@@ -20,16 +22,24 @@ int main() {
   const auto delta_max = static_cast<double>( (rand() % 200 + 50) / 100.0 );
   const auto spring_const = static_cast<double>( (rand() % 1990 + 10) / 500.0 );
   const auto T = static_cast<double>( (rand() % 200000 + 10) / 1000.0 );
-  const auto x0 = static_cast<double>( (rand() % 100 - 200) / 50.0 );
+  const auto p0x = static_cast<double>( (rand() % 100 - 200) / 50.0 );
+  const auto p0y = static_cast<double>( (rand() % 100 - 200) / 50.0 );
+  const auto E0x = static_cast<double>( (rand() % 100 - 200) / 20.0 );
+  const auto E0y = static_cast<double>( (rand() % 100 - 200) / 20.0 );
+  const auto E0z = static_cast<double>( (rand() % 100 - 200) / 20.0 );
   const unsigned nsteps = 20000000;
 
   if (taskid == 0) {
-    cout << "1D Harmonic test started.\n";
+    cout << "2D linear dipole test started.\n";
     cout << '\n';
     cout << "delta_max = " << delta_max << '\n';
     cout << "k         = " << spring_const << '\n';
     cout << "T         = " << T << '\n';
-    cout << "x0        = " << x0 << '\n';
+    cout << "p0x       = " << p0x << '\n';
+    cout << "p0y       = " << p0y << '\n';
+    cout << "E0x       = " << E0x << '\n';
+    cout << "E0y       = " << E0y << '\n';
+    cout << "E0z       = " << E0z << '\n';
     cout << '\n';
   }
   
@@ -37,30 +47,48 @@ int main() {
   const double kB = 1.0;
   const molecular_id id = molecular_id::Test1;
   const size_t N = 1;
-  const size_t D = 1;
+  const size_t D = 3;
   const double L = 1.0;
   const metric m = euclidean;
   const bc boundary = no_bc;
-  const_k_spring_potential pot(spring_const);
+  const auto inv_chi = eye(3, 3);
+  dipole_strain_linear_2d_potential strain_pot(inv_chi);
+  dipole_electric_potential electric_pot({E0x, E0y, E0z}, {0, 1, 2});
 
   metropolis sim(id, N, D, L, continuous_trial_move(delta_max), 
-                 &pot, T, kB, m, boundary, metropolis_acc, 
-                 hardware_entropy_seed_gen, true);
-  sim.set_positions({x0}, 0);
+                 {&strain_pot, &electric_pot}, T, kB, m, boundary, 
+                 metropolis_acc, hardware_entropy_seed_gen, true);
+  sim.set_positions({p0x, p0y}, 0);
   const double u0 = accessors::U(sim);
   
   metropolis_suite msuite(sim, 0, 1, info_lvl_flag::QUIET);
   
-  msuite.add_variable_to_average("x", [](const metropolis &sim) {
+  msuite.add_variable_to_average("px", [](const metropolis &sim) {
     return sim.positions()(0, 0);
   });
-  msuite.add_variable_to_average("x^2", [](const metropolis &sim) {
-    return sim.positions()(0, 0) * sim.positions()(0, 0);
+  msuite.add_variable_to_average("py", [](const metropolis &sim) {
+    return sim.positions()(1, 0) * sim.positions()(0, 0);
+  });
+  msuite.add_variable_to_average("pz", [](const metropolis &sim) {
+    return sim.positions()(2, 0) * sim.positions()(0, 0);
+  });
+  msuite.add_variable_to_average("px^2", [](const metropolis &sim) {
+    auto x = sim.positions()(0, 0);
+    return x*x;
+  });
+  msuite.add_variable_to_average("py^2", [](const metropolis &sim) {
+    auto y = sim.positions()(1, 0);
+    return y*y;
+  });
+  msuite.add_variable_to_average("pz^2", [](const metropolis &sim) {
+    auto z = sim.positions()(2, 0);
+    return z*z;
   });
   msuite.add_variable_to_average("U", accessors::U);
   msuite.add_variable_to_average("delta(x - x0)", [=](const metropolis &sim) {
-    const double x = sim.positions()(0, 0);
-    return (x < x0 + dx && x > x0 - dx) ? 1 : 0;
+    const double px = sim.positions()(0, 0);
+    const double py = sim.positions()(1, 0);
+    return (px < p0x + dx && px > p0x - dx && py < p0y + dx && py > p0y - dx) ? 1 : 0;
   });
 
   msuite.simulate(nsteps);

@@ -8,6 +8,7 @@
 #include <limits>
 #include <armadillo>
 #include <exception>
+#include <initializer_list>
 #include "pauth_types.hpp"
 #include "molecular.hpp"
 #include "potentials.hpp"
@@ -109,6 +110,81 @@ public:
   metropolis(const char *fname, const size_t N, 
              const size_t D, const double L, trial_move_generator tmg,
              abstract_potential* pot, const double T, 
+             const double kB = _default_kB, 
+             metric m = _default_metric, bc boundary = _default_bc,
+             acc acceptance = _default_acc,
+             seed_gen sg = _default_seed_gen);
+
+  /*! \brief Constructor for a Markov chain Monte Carlo simulation
+   *
+   * \param     id          Molecular id of simulation molecules
+   * \param     N           Number of molecules
+   * \param     D           Number of dimensions 
+   * \param     L           Simulation box edge length
+   * \param     tmg         Trial move generator
+   * \param     pots        Molecular potentials
+   * \param     T           Simulation temperature
+   * \param     kB          Boltzmann's constant
+   * \param     m           Metric for measuring molecule-molecule distances
+   * \param     bc          Boundary conditions
+   * \param     acceptance  Determines whether a move is accepted for rejected
+   * \param     sg          Function for generating a seed
+   * \param     init_zeros  If true, initializes all molecules to position zero
+   * \return                Markov chain Monte Carlo simulation object
+   */
+  metropolis(const molecular_id id, const size_t N, const size_t D, 
+             const double L, trial_move_generator tmg,
+             std::initializer_list<abstract_potential*> pots, const double T, 
+             const double kB = _default_kB, 
+             metric m = _default_metric, bc boundary = _default_bc,
+             acc acceptance = _default_acc,
+             seed_gen sg = _default_seed_gen,
+             const bool init_zeros = false); 
+
+  /*! \brief Constructor for a Markov chain Monte Carlo simulation
+   *
+   * \param     fname         Filename of initial molecular positions
+   * \param     id            Molecular id of simulation molecules
+   * \param     N             Number of molecules
+   * \param     D             Number of dimensions 
+   * \param     L             Simulation box edge length
+   * \param     tmg           Trial move generator
+   * \param     pots        Molecular potentials
+   * \param     T             Simulation temperature
+   * \param     kB            Boltzmann's constant
+   * \param     m             Metric for measuring molecule-molecule distances
+   * \param     bc            Boundary conditions
+   * \param     acceptance    Determines whether a move is accepted for rejected
+   * \param     sg            Function for generating a seed
+   * \return                  Markov chain Monte Carlo simulation object
+   */
+  metropolis(const char *fname, const molecular_id id, const size_t N, 
+             const size_t D, const double L, trial_move_generator tmg,
+             std::initializer_list<abstract_potential*> pots, const double T, 
+             const double kB = _default_kB, 
+             metric m = _default_metric, bc boundary = _default_bc,
+             acc acceptance = _default_acc,
+             seed_gen sg = _default_seed_gen); 
+
+  /*! \brief Constructor for a Markov chain Monte Carlo simulation
+   *
+   * \param     fname         Filename of initial molecular positions
+   * \param     N             Number of molecules
+   * \param     D             Number of dimensions 
+   * \param     L             Simulation box edge length
+   * \param     tmg           Trial move generator
+   * \param     pots        Molecular potentials
+   * \param     T             Simulation temperature
+   * \param     kB            Boltzmann's constant
+   * \param     m             Metric for measuring molecule-molecule distances
+   * \param     bc            Boundary conditions
+   * \param     acceptance    Determines whether a move is accepted for rejected
+   * \param     sg            Function for generating a seed
+   * \return                  Markov chain Monte Carlo simulation object
+   */
+  metropolis(const char *fname, const size_t N, 
+             const size_t D, const double L, trial_move_generator tmg,
+             std::initializer_list<abstract_potential*> pots, const double T, 
              const double kB = _default_kB, 
              metric m = _default_metric, bc boundary = _default_bc,
              acc acceptance = _default_acc,
@@ -324,6 +400,7 @@ public:
    */
   inline void set_positions(const arma::mat &new_positions) {
     _positions = new_positions;
+    update_U();
   }
 
   /*! \brief Set molecular position for molecule j
@@ -333,6 +410,7 @@ public:
    */
   inline void set_positions(const arma::vec &new_x, const size_t j) {
     _positions.col(j) = new_x;
+    update_U();
   }
 
   /*! \brief Seed the random number generator

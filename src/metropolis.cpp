@@ -27,7 +27,6 @@ metropolis::metropolis(const molecular_id id, const size_t N, const size_t D,
   _edge_lengths.fill(L);
   _dx.zeros();
   _rng.seed(sg());
-  _edge_lengths.fill(L);
   if (init_zeros)
     _positions.zeros();
   else
@@ -51,7 +50,6 @@ metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
   _edge_lengths.fill(L);
   _dx.zeros();
   _rng.seed(sg());
-  _edge_lengths.fill(L); 
   _load_positions(fname, _positions, N, D);
 
   update_U(); 
@@ -72,7 +70,6 @@ metropolis::metropolis(const char *fname, const size_t N,
   _edge_lengths.fill(L);
   _dx.zeros();
   _rng.seed(sg());
-  _edge_lengths.fill(L); 
   _load_positions(fname, _positions, N, D, _molecular_ids);
 
   update_U(); 
@@ -82,12 +79,8 @@ metropolis::metropolis(const char *fname, const size_t N,
 metropolis::metropolis(const molecular_id id, const size_t N, const size_t D, 
                        const double L, trial_move_generator tmg,
                        std::initializer_list<abstract_potential*> pots, 
-                       const double T, 
-                       const double kB = _default_kB, 
-                       metric m = _default_metric, bc boundary = _default_bc,
-                       acc acceptance = _default_acc,
-                       seed_gen sg = _default_seed_gen,
-                       const bool init_zeros = false) : 
+                       const double T, const double kB, metric m, bc boundary,
+                       acc acceptance, seed_gen sg, const bool init_zeros) : 
       _molecular_ids(N, id), _positions(D, N), _edge_lengths(D), _V(_pow(L, D)), 
       _potentials(pots), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
       _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
@@ -97,7 +90,6 @@ metropolis::metropolis(const molecular_id id, const size_t N, const size_t D,
   _edge_lengths.fill(L);
   _dx.zeros();
   _rng.seed(sg());
-  _edge_lengths.fill(L);
   if (init_zeros)
     _positions.zeros();
   else
@@ -109,11 +101,8 @@ metropolis::metropolis(const molecular_id id, const size_t N, const size_t D,
 metropolis::metropolis(const char *fname, const molecular_id id, const size_t N, 
                        const size_t D, const double L, trial_move_generator tmg,
                        std::initializer_list<abstract_potential*> pots, 
-                       const double T, 
-                       const double kB = _default_kB, 
-                       metric m = _default_metric, bc boundary = _default_bc,
-                       acc acceptance = _default_acc,
-                       seed_gen sg = _default_seed_gen)
+                       const double T, const double kB, metric m, bc boundary,
+                       acc acceptance, seed_gen sg)
     : _molecular_ids(N, id), _positions(D, N), _edge_lengths(D), _V(_pow(L, D)), 
       _potentials(pots), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
       _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
@@ -123,7 +112,6 @@ metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
   _edge_lengths.fill(L);
   _dx.zeros();
   _rng.seed(sg());
-  _edge_lengths.fill(L); 
   _load_positions(fname, _positions, N, D);
 
   update_U(); 
@@ -133,11 +121,8 @@ metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
 metropolis::metropolis(const char *fname, const size_t N, 
                        const size_t D, const double L, trial_move_generator tmg,
                        std::initializer_list<abstract_potential*> pots, 
-                       const double T, 
-                       const double kB = _default_kB, 
-                       metric m = _default_metric, bc boundary = _default_bc,
-                       acc acceptance = _default_acc,
-                       seed_gen sg = _default_seed_gen)
+                       const double T, const double kB, metric m, bc boundary,
+                       acc acceptance, seed_gen sg)
     : _molecular_ids(N), _positions(D, N), _edge_lengths(D), _V(_pow(L, D)), 
       _potentials(pots), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
       _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
@@ -147,7 +132,6 @@ metropolis::metropolis(const char *fname, const size_t N,
   _edge_lengths.fill(L);
   _dx.zeros();
   _rng.seed(sg());
-  _edge_lengths.fill(L); 
   _load_positions(fname, _positions, N, D, _molecular_ids);
 
   update_U(); 

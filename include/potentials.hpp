@@ -539,11 +539,11 @@ private:
 /*! \brief Dipole in 2D space
  */
 class abstract_dipole_strain_2d_potential : 
-  public abstract_dipole_strain_potential {
+  virtual public abstract_dipole_strain_potential {
 public:
   virtual ~abstract_dipole_strain_2d_potential()=0;
 private:
-  arma::vec _p(const arma::vec& xs) {
+  arma::vec _p(const arma::vec& xs) const {
     return arma::vec(xs.memptr(), 2);
   }
 };
@@ -551,11 +551,11 @@ private:
 /*! \brief Dipole in 3D space
  */
 class abstract_dipole_strain_3d_potential :
-  public abstract_dipole_strain_potential {
+  virtual public abstract_dipole_strain_potential {
 public:
   virtual ~abstract_dipole_strain_3d_potential()=0;
 private:
-  arma::vec _p(const arma::vec& xs) {
+  arma::vec _p(const arma::vec& xs) const {
     return arma::vec(xs.memptr(), 3);
   }
 };
@@ -563,11 +563,11 @@ private:
 /*! \brief Dipole whose susceptibility does not depend on space, direction, etc.
  */
 class abstract_dipole_strain_linear_potential :
-  public abstract_dipole_strain_potential {
+  virtual public abstract_dipole_strain_potential {
 public:
   virtual ~abstract_dipole_strain_linear_potential()=0;
 
-  abstract_dipole_strain_linear_potential(arma::mat& inv_chi) 
+  abstract_dipole_strain_linear_potential(const arma::mat& inv_chi) 
     : _const_inv_chi(inv_chi) {}
 
 private:
@@ -584,7 +584,9 @@ class dipole_strain_linear_2d_potential :
   public abstract_dipole_strain_2d_potential,
   public abstract_dipole_strain_linear_potential {
 public:
-  dipole_strain_linear_2d_potential(arma::mat& inv_chi)
+  virtual ~dipole_strain_linear_2d_potential() {}
+
+  dipole_strain_linear_2d_potential(const arma::mat& inv_chi)
     : abstract_dipole_strain_linear_potential(inv_chi) {}
 };
 
@@ -594,7 +596,9 @@ class dipole_strain_linear_3d_potential :
   public abstract_dipole_strain_3d_potential,
   public abstract_dipole_strain_linear_potential {
 public:
-  dipole_strain_linear_3d_potential(arma::mat& inv_chi)
+  virtual ~dipole_strain_linear_3d_potential() {}
+
+  dipole_strain_linear_3d_potential(const arma::mat& inv_chi)
     : abstract_dipole_strain_linear_potential(inv_chi) {}
 };
 
@@ -603,6 +607,8 @@ public:
 class dipole_strain_nonlinear_2d_potential : 
   public abstract_dipole_strain_2d_potential {
 public:
+  virtual ~dipole_strain_nonlinear_2d_potential() {}
+
   dipole_strain_nonlinear_2d_potential(std::function<arma::mat(const arma::vec&,
     const molecular_id)> inv_chi_f) : _inv_chi_f(inv_chi_f) {}
 private:
@@ -620,6 +626,8 @@ private:
 class dipole_strain_nonlinear_3d_potential : 
   public abstract_dipole_strain_3d_potential {
 public:
+  virtual ~dipole_strain_nonlinear_3d_potential() {}
+
   dipole_strain_nonlinear_3d_potential(std::function<arma::mat(const arma::vec&,
     const molecular_id)> inv_chi_f) : _inv_chi_f(inv_chi_f) {}
 private:

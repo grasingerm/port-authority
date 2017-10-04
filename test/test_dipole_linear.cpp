@@ -32,7 +32,7 @@ int main() {
   const unsigned nsteps = 20000000;
 
   if (taskid == 0) {
-    cout << "2D linear dipole test started.\n";
+    cout << "3D linear dipole test started.\n";
     cout << '\n';
     cout << "delta_max = " << delta_max << '\n';
     cout << "k         = " << spring_const << '\n';
@@ -55,14 +55,17 @@ int main() {
   const metric m = euclidean;
   const bc boundary = no_bc;
   const mat inv_chi = arma::eye(3, 3);
-  dipole_strain_linear_2d_potential strain_pot(inv_chi);
+  const vec E0({E0x, E0y, E0z});
+  const vec pequil = inv_chi.i() * E0;
+  dipole_strain_linear_3d_potential strain_pot(inv_chi);
   dipole_electric_potential electric_pot({E0x, E0y, E0z}, {0, 1, 2});
 
   metropolis sim(id, N, D, L, continuous_trial_move(delta_max), 
                  {&strain_pot, &electric_pot}, T, kB, m, boundary, 
                  metropolis_acc, hardware_entropy_seed_gen, true);
-  sim.set_positions({p0x, p0y, p0z}, 0);
+  sim.set_positions(pequil, 0);
   const double u0 = accessors::U(sim);
+  sim.set_positions({p0x, p0y, p0z}, 0);
   
   metropolis_suite msuite(sim, 0, 1, info_lvl_flag::QUIET);
   
@@ -89,12 +92,11 @@ int main() {
   });
   msuite.add_variable_to_average("U", accessors::U);
   msuite.add_variable_to_average("delta(x - x0)", [=](const metropolis &sim) {
-    const double px = sim.positions()(0, 0);
-    const double py = sim.positions()(1, 0);
-    const double pz = sim.positions()(2, 0);
-    return (px < p0x + dx && px > p0x - dx && 
-            py < p0y + dx && py > p0y - dx &&
-            pz < p0z + dx && pz > p0z - dx    ) ? 1 : 0;
+    for (unsigned i = 0; i < 3; ++i) {
+      const double pi = sim.positions()(i, 0);
+      if (pi < pequil(i) - dx || pi > pequil(i) + dx) return 0;
+    }
+    return 1;
   });
 
   msuite.simulate(nsteps);
@@ -117,13 +119,11 @@ int main() {
     mat eigvec;
     eig_sym(eigval, eigvec, inv_chi);
     
-    vec E0({E0x, E0y, E0z});
     vec Ev = eigvec * E0;
     double Z_an = 1.0;
     for(unsigned i = 0; i < 3; ++i)
       Z_an *= sqrt(2 * M_PI * kB * T / eigval(i)) * 
               exp(Ev(i)*Ev(i) / (2 * eigval(i) * kB * T));
-    vec p_an = inv_chi.i() * E0;
 
     const auto exp_pxsq_an = (kB * T / eigval(0));
     const auto exp_pysq_an = (kB * T / eigval(1));
@@ -131,18 +131,18 @@ int main() {
 
     const auto exp_E_an = 3 * kB * T / 2.0;
 
-    cout << "exp_px    =   " << exp_px << " ?= " << p_an(0) << '\n';
-    assert(abs((exp_px - p_an(0)) / p_an(0)) < 5e-2);
-    cout << "exp_py    =   " << exp_py << " ?= " << p_an(1) << '\n';
-    assert(abs((exp_py - p_an(1)) / p_an(1)) < 5e-2);
-    cout << "exp_pz    =   " << exp_pz << " ?= " << p_an(2) << '\n';
-    assert(abs((exp_pz - p_an(2)) / p_an(2)) < 5e-2);
+    cout << "exp_px    =   " << exp_px << " ?= " << pequil(0) << '\n';
+    assert(abs((exp_px - pequil(0)) / pequil(0)) < 5e-2);
+    cout << "exp_py    =   " << exp_py << " ?= " << pequil(1) << '\n';
+    assert(abs((exp_py - pequil(1)) / pequil(1)) < 5e-2);
+    cout << "exp_pz    =   " << exp_pz << " ?= " << pequil(2) << '\n';
+    assert(abs((exp_pz - pequil(2)) / pequil(2)) < 5e-2);
 
-    cout << "exp_px^2  =   " << exp_px << " ?= " << p_an(0) << '\n';
+    cout << "exp_px^2  =   " << exp_pxsq << " ?= " << exp_pxsq_an << '\n';
     assert(abs((exp_pxsq - exp_pxsq_an) / exp_pxsq_an) < 1e-2);
-    cout << "exp_py^2  =   " << exp_py << " ?= " << p_an(1) << '\n';
+    cout << "exp_py^2  =   " << exp_pysq << " ?= " << exp_pysq_an << '\n';
     assert(abs((exp_pysq - exp_pysq_an) / exp_pysq_an) < 1e-2);
-    cout << "exp_pz^2  =   " << exp_pz << " ?= " << p_an(2) << '\n';
+    cout << "exp_pz^2  =   " << exp_pzsq << " ?= " << exp_pzsq_an << '\n';
     assert(abs((exp_pzsq - exp_pzsq_an) / exp_pzsq_an) < 1e-2);
 
     cout << "exp_E    =   " << exp_E << " ?= " << exp_E_an << '\n';
@@ -156,7 +156,7 @@ int main() {
 
   }
 
-  if(taskid == 0) cout << "2D linear dipole test passed.\n";
+  if(taskid == 0) cout << "3D linear dipole test passed.\n";
 
   MPI_Finalize();
 

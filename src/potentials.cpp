@@ -418,79 +418,106 @@ double abstract_LJ_lookup_potential::_get_rzero(const molecular_id id1,
   return _rzero_map.at(key);
 }
 
-double dipole_electric_potential::_U(const metropolis &sim) const {
-
-  const auto N = sim.N();
-  const auto &positions = sim.positions();
-  double sum = 0.0;
-
-  #pragma omp parallel for reduction(+:sum)
-  for (auto i = size_t{0}; i < N; ++i) {
-    auto& positionsi = positions.col(i);
-    for (auto& kv : _efield)
-      sum += -(positionsi(kv.first) * kv.second(positionsi));
-  }
-
-  return sum;
-
-}
-
-double dipole_electric_potential::_delta_U(const metropolis &sim, 
-  const size_t j, arma::vec &dx) const {
-
-  auto& positionsj = sim.positions().col(j);
-
-  double sum = 0.0;
-  for (auto& kv : _efield)
-    sum += -(dx(kv.first) * kv.second(positionsj));
-
-  return sum;
-  
-}
-
-arma::vec dipole_electric_potential::_forceij(const metropolis &sim, 
-    const size_t, const size_t) const { return arma::zeros(sim.D()); }
-
-double abstract_dipole_strain_potential::_U(const metropolis &sim) const {
+double abstract_dipole_electric_potential::_U(const metropolis &sim) const {
   
   const auto N = sim.N();
+  const auto &molecular_ids = sim.molecular_ids();
   const auto &positions = sim.positions();
-  const auto &ids = sim.molecular_ids();
-  double sum = 0.0;
 
-  #pragma omp parallel for reduction(+:sum)
+  double potential = 0.0;
+
+  #pragma omp parallel for reduction(+:potential)
   for (auto i = size_t{0}; i < N; ++i) {
-
-    auto& xsi = positions.col(i);
-    auto pi = p(xsi);
-
-    // Ui = 1/2 * p . X p
-    sum += arma::dot(pi, inv_chi(xsi, ids[i]) * pi);
-
+    potential += (-dot(_dipole(molecular_ids[i], positions.col(i)), 
+                       _E0(positions.col(i))));
   }
 
-  return 0.5 * sum;
-
+  return potential;
 }
 
-double abstract_dipole_strain_potential::_delta_U(const metropolis &sim, 
-    const size_t j, arma::vec &dx) const {
-
-  auto& xs = sim.positions().col(j);
+double abstract_dipole_electric_potential::_delta_U(const metropolis &sim,
+                                                    const size_t j,
+                                                    arma::vec &rn_j) const {
+  const arma::vec &ro_j = sim.positions().col(j);
   const auto id = sim.molecular_ids()[j];
-  auto xs_new = xs + dx;
+  const auto dipole_o = _dipole(id, ro_j);
+  const auto dipole_n = _dipole(id, rn_j);
 
-  auto pi = p(xs);
-  auto pnew = p(xs_new);
-
-  return 0.5 * (arma::dot(pi, inv_chi(xs, id) * pi) - 
-                arma::dot(pnew, inv_chi(xs_new, id) * pnew));
-
+  return (dot(dipole_o, _E0(ro_j)) - dot(dipole_n, _E0(rn_j)));
 }
 
-arma::vec abstract_dipole_strain_potential::_forceij
-  (const metropolis &sim, const size_t, const size_t) const {
-  return arma::zeros(sim.D()); 
+arma::vec abstract_dipole_electric_potential::_forceij(const metropolis &sim, 
+                                                       const size_t,
+                                                       const size_t) const {
+  return arma::zeros(sim.D());
+}
+
+/* 
+ * unit vectors 
+ */
+arma::vec _nunit_1D(const arma::vec& x) {
+  const auto cp = std::cos(x(0));
+  const auto sp = std::sin(x(0));
+
+  return arma::vec({cp, sp});
+}
+
+arma::vec _nunit_2D(const arma::vec& x) {
+  const auto cp = std::cos(x(0));
+  const auto sp = std::sin(x(0));
+  const auto ct = std::cos(x(1));
+  const auto st = std::sin(x(1));
+
+  return arma::vec({cp*st, sp*st, ct});
+}
+
+arma::vec _nunit_3D(const arma::vec& x) {
+  const auto cp = std::cos(x(2));
+  const auto sp = std::sin(x(2));
+
+  return arma::vec({cp, sp});
+}
+
+arma::vec _nunit_5D(const arma::vec& x) {
+  const auto cp = std::cos(x(3));
+  const auto sp = std::sin(x(3));
+  const auto ct = std::cos(x(4));
+  const auto st = std::sin(x(4));
+
+  return arma::vec({cp*st, sp*st, ct});
+}
+
+arma::mat _uniaxial_chi(const arma::vec& n, const double kappa) {
+  return kappa * n * n.t();
+}
+
+arma::mat _TI_chi(const arma::vec& n, const double kappa) {
+  const auto D = n.n_cols;
+  return kappa * (arma::eye(D, D) - n * n.t());
+}
+
+const_E_const_suscept_dipole_electric_potential 
+  const_E_fixed_2D_dipole_potential(arma::vec const_E0, const double mu) {
+  return const_E_const_suscept_dipole_electric_potential(const_E0, 
+      [=](const arma::vec& x, const arma::vec&) -> arma::vec { 
+        return mu * _nunit_2D(x); 
+      });
+}
+
+const_E_const_suscept_dipole_electric_potential 
+  const_E_uniaxial_2D_dipole_potential(arma::vec const_E0, const double kappa) {
+  return const_E_const_suscept_dipole_electric_potential(const_E0,
+      [=](const arma::vec& x, const arma::vec& E0) -> arma::vec {
+        return _uniaxial_chi(_nunit_2D(x), kappa) * E0;
+      });
+}
+
+const_E_const_suscept_dipole_electric_potential 
+  const_E_TI_2D_dipole_potential(arma::vec const_E0, const double kappa) {
+  return const_E_const_suscept_dipole_electric_potential(const_E0,
+      [=](const arma::vec& x, const arma::vec& E0) -> arma::vec {
+        return _TI_chi(_nunit_2D(x), kappa) * E0;
+      });
 }
 
 // definitions for pure virtual destructors
@@ -500,9 +527,6 @@ abstract_LJ_full_potential::~abstract_LJ_full_potential() {}
 abstract_LJ_lookup_potential::~abstract_LJ_lookup_potential() {}
 abstract_LJ_cutoff_potential::~abstract_LJ_cutoff_potential() {}
 abstract_spring_potential::~abstract_spring_potential() {}
-abstract_dipole_strain_potential::~abstract_dipole_strain_potential() {}
-abstract_dipole_strain_2d_potential::~abstract_dipole_strain_2d_potential() {}
-abstract_dipole_strain_3d_potential::~abstract_dipole_strain_3d_potential() {}
-abstract_dipole_strain_linear_potential::~abstract_dipole_strain_linear_potential() {}
+abstract_dipole_electric_potential::~abstract_dipole_electric_potential() {}
 
 } // namespace pauth

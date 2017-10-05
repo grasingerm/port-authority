@@ -1,6 +1,8 @@
 #include "metropolis.hpp"
 #include "potentials.hpp"
 #include <cmath>
+#include <numeric>
+#include <iostream>
 
 #include "_metropolis_helpers.hpp"
 
@@ -137,6 +139,138 @@ metropolis::metropolis(const char *fname, const size_t N,
   update_U(); 
 }
 
+metropolis::metropolis(const molecular_id id, const size_t N, const size_t D, 
+                       const std::initializer_list<double> edge_lengths,
+                       trial_move_generator tmg,
+                       abstract_potential *pot, const double T, 
+                       const double kB, metric m, bc boundary, 
+                       acc acceptance, seed_gen sg, const bool init_zeros) 
+    : _molecular_ids(N, id), _positions(D, N), _edge_lengths(edge_lengths), 
+      _V(accumulate(edge_lengths.begin(), edge_lengths.end(), 1.0, multiplies<double>())), 
+      _potentials(1, pot), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
+      _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
+      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0),  _U(0.0), 
+      _eps(0.0), _accepted(false) {
+
+  _dx.zeros();
+  _rng.seed(sg());
+  if (init_zeros)
+    _positions.zeros();
+  else
+    _init_positions_lattice(_positions, N, D, _edge_lengths);
+
+  update_U(); 
+}
+
+metropolis::metropolis(const char *fname, const molecular_id id, const size_t N,
+                       const size_t D,
+                       const std::initializer_list<double> edge_lengths,
+                       trial_move_generator tmg,
+                       abstract_potential* pot, const double T, 
+                       const double kB, metric m, bc boundary,
+                       acc acceptance, seed_gen sg) 
+    : _molecular_ids(N, id), _positions(D, N), _edge_lengths(edge_lengths), 
+      _V(accumulate(edge_lengths.begin(), edge_lengths.end(), 1.0, multiplies<double>())), 
+      _potentials(1, pot), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
+      _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
+      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _U(0.0), 
+      _eps(0.0), _accepted(false) {
+
+  _dx.zeros();
+  _rng.seed(sg());
+  _load_positions(fname, _positions, N, D);
+
+  update_U(); 
+}
+
+metropolis::metropolis(const char *fname, const size_t N,
+                       const size_t D,
+                       const std::initializer_list<double> edge_lengths,
+                       trial_move_generator tmg,
+                       abstract_potential* pot, const double T, 
+                       const double kB, metric m, bc boundary,
+                       acc acceptance, seed_gen sg) 
+    : _molecular_ids(N), _positions(D, N), _edge_lengths(edge_lengths), 
+      _V(accumulate(edge_lengths.begin(), edge_lengths.end(), 1.0, multiplies<double>())), 
+      _potentials(1, pot), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
+      _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
+      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _U(0.0),
+      _eps(0.0), _accepted(false) {
+ 
+  _dx.zeros();
+  _rng.seed(sg());
+  _load_positions(fname, _positions, N, D, _molecular_ids);
+
+  update_U(); 
+}
+
+
+metropolis::metropolis(const molecular_id id, const size_t N, const size_t D, 
+                       const std::initializer_list<double> edge_lengths,
+                       trial_move_generator tmg,
+                       std::initializer_list<abstract_potential*> pots, 
+                       const double T, const double kB, metric m, bc boundary,
+                       acc acceptance, seed_gen sg, const bool init_zeros) : 
+      _molecular_ids(N, id), _positions(D, N), _edge_lengths(edge_lengths), 
+      _V(accumulate(edge_lengths.begin(), edge_lengths.end(), 1.0, multiplies<double>())), 
+      _potentials(pots), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
+      _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
+      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0),  _U(0.0), 
+      _eps(0.0), _accepted(false) {
+
+  _dx.zeros();
+  _rng.seed(sg());
+  if (init_zeros)
+    _positions.zeros();
+  else
+    _init_positions_lattice(_positions, N, D, _edge_lengths);
+
+  update_U(); 
+}
+
+metropolis::metropolis(const char *fname, const molecular_id id, const size_t N, 
+                       const size_t D,
+                       const std::initializer_list<double> edge_lengths, 
+                       trial_move_generator tmg,
+                       std::initializer_list<abstract_potential*> pots, 
+                       const double T, const double kB, metric m, bc boundary,
+                       acc acceptance, seed_gen sg)
+    : _molecular_ids(N, id), _positions(D, N), _edge_lengths(edge_lengths), 
+      _V(accumulate(edge_lengths.begin(), edge_lengths.end(), 1.0, multiplies<double>())), 
+      _potentials(pots), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
+      _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
+      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _U(0.0), 
+      _eps(0.0), _accepted(false) {
+ 
+  _dx.zeros();
+  _rng.seed(sg());
+  _load_positions(fname, _positions, N, D);
+
+  update_U(); 
+}
+
+
+metropolis::metropolis(const char *fname, const size_t N, 
+                       const size_t D, 
+                       const std::initializer_list<double> edge_lengths, 
+                       trial_move_generator tmg,
+                       std::initializer_list<abstract_potential*> pots, 
+                       const double T, const double kB, metric m, bc boundary,
+                       acc acceptance, seed_gen sg)
+    : _molecular_ids(N), _positions(D, N), _edge_lengths(edge_lengths), 
+      _V(accumulate(edge_lengths.begin(), edge_lengths.end(), 1.0, multiplies<double>())), 
+      _potentials(pots), _T(T), _kB(kB), _beta(1.0 / (kB * T)), _m(m), 
+      _bc(boundary), _eps_dist(0.0, 1.0), _choice_dist(0, N-1), _tmg(tmg), 
+      _acc(acceptance), _step(0), _dx(D), _choice(0), _dU(0.0), _U(0.0),
+      _eps(0.0), _accepted(false) {
+ 
+  _dx.zeros();
+  _rng.seed(sg());
+  _load_positions(fname, _positions, N, D, _molecular_ids);
+
+  update_U(); 
+}
+
 metropolis metropolis::operator=(const metropolis &rhs) {
   if (this == &rhs) return *this;
 
@@ -207,7 +341,7 @@ long unsigned metropolis::simulate(const long unsigned nsteps) {
       
       // after reduction, store in simulation object
       _dU = dU;
-
+      
       // do we accept or reject this move?
       _accepted = _acc(*this, _dU, (_eps = _eps_dist(_rng)));
       // make move while simultaneously implementing boundary conditions

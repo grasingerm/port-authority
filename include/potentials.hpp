@@ -437,57 +437,30 @@ private:
   arma::vec _forceij(const metropolis &sim, const size_t, const size_t) const;
 };
 
+
 /*! \brief Potential of a dipole in an electric field
  */
-class dipole_electric_potential : public abstract_potential {
+class abstract_dipole_electric_potential : public abstract_potential {
 public:
-  /*! \brief Potential of a dipole in a (constant) electric field
+  virtual ~abstract_dipole_electric_potential() = 0;
+
+  /*! \brief Get electric field
    *
-   * \param   E0        Magnitude of electric field
-   * \param   dof_idx   Index of the degree of freedom of the E field
-   * \return            Potential of a dipole in a (constant) electric field
+   * \param    x     X coordinates where to find electric field
+   * \return         Electric field at x
    */
-  dipole_electric_potential(const double E0, const unsigned dof_idx = 2) {
-    _efield[dof_idx] = [E0](const arma::vec&) { return E0; };
+  inline arma::vec E0(const arma::vec& x) const {
+    return _E0(x);
   }
 
-  /*! \brief Potential of a dipole in a (constant) electric field
+  /*! \brief Get the molecular dipole
    *
-   * \param   E0        Magnitude of electric field
-   * \param   dof_idx   Index of the degree of freedom of the E field
-   * \return            Potential of a dipole in a (constant) electric field
+   * \param    id    Molecular id
+   * \param    x     X coordinates of the dipole
+   * \return         Susceptibility tensor
    */
-  dipole_electric_potential(const std::initializer_list<double> Es, 
-                            const std::initializer_list<unsigned> dof_idxs) {
-    if (Es.size() != dof_idxs.size()) 
-      throw std::invalid_argument("E field function list and dof list should "
-                                  "be of the same length");
-
-    for(auto tup : boost::combine(dof_idxs, Es)) {
-      unsigned idx;
-      double E;
-      boost::tie(idx, E) = tup;
-      _efield[idx] = [E](const arma::vec&) { return E; };
-    }
-  }
-
-  /*! \brief Potential of a dipole in an electric field
-   *
-   * \param   Es        Components of electric field
-   * \param   dox_idxs  Indexes of the degree of freedom of the E field
-   * \return            Potential of a dipole in an electric field
-   */
-  dipole_electric_potential(std::initializer_list<
-      std::function<double(const arma::vec&)> > Es, 
-      std::initializer_list<unsigned> dof_idxs) {
-
-    if (Es.size() != dof_idxs.size()) 
-      throw std::invalid_argument("E field function list and dof list should "
-                                  "be of the same length");
-
-    for(auto tup : boost::combine(dof_idxs, Es)) 
-      _efield[boost::get<0>(tup)] = boost::get<1>(tup); 
-
+  inline arma::vec dipole(const molecular_id id, const arma::vec& x) const {
+    return _dipole(id, x);
   }
 
 private:
@@ -496,154 +469,68 @@ private:
                           arma::vec &dx) const;
   virtual arma::vec _forceij(const metropolis &sim, const size_t i, 
                              const size_t j) const;
-
-  std::map<unsigned, std::function<double(const arma::vec&)>> _efield;
+  virtual arma::vec _E0(const arma::vec& x) const = 0;
+  virtual arma::vec _dipole(const molecular_id id, const arma::vec& x) 
+    const = 0;
 };
 
-/*! \brief Potential of a dipole in an electric field
+/*! \brief Potential of a dipole in a constant electric field
  */
-class abstract_dipole_strain_potential : public abstract_potential {
-public:
-  virtual ~abstract_dipole_strain_potential() = 0;
+class const_E_const_suscept_dipole_electric_potential 
+  : public abstract_dipole_electric_potential {
 
-  /*! \brief Inverse of the susceptibility tensor
+public:
+  virtual ~const_E_const_suscept_dipole_electric_potential() {}
+ 
+  /*! \brief Dipole in a constant electric field with a constant susceptbility tensor
    *
-   * \param   xs    Degrees of freedom of dipole
-   * \param   id    Molecular id of the particle
-   * \return        Inverse susceptibility
+   * \param     E0          Electric field
+   * \param     dipole_f    Dipole function
+   * \return                Dipole potential
    */
-  inline arma::mat inv_chi(const arma::vec& xs, const molecular_id id) const {
-    return _inv_chi(xs, id);
-  }
-
-  /*! \brief Polarization vector
-   *
-   * \param   xs    Degrees of freedom of dipole
-   * \return        Polarization vector
-   */
-  inline arma::vec p(const arma::vec& xs) const {
-    return _p(xs);
-  }
+  const_E_const_suscept_dipole_electric_potential(arma::vec E0,
+      std::function<arma::vec(const arma::vec&, const arma::vec&)> dipole_f) :
+      _const_E0(E0), _dipole_f(dipole_f) {}
 
 private:
-  virtual double _U(const metropolis &sim) const;
-  virtual double _delta_U(const metropolis &sim, const size_t j, 
-                          arma::vec &dx) const;
-  virtual arma::vec _forceij(const metropolis &sim, const size_t, 
-                             const size_t) const;
-  virtual arma::mat _inv_chi(const arma::vec& xs, 
-                             const molecular_id id) const = 0;
-  virtual arma::vec _p(const arma::vec& xs) const = 0;
-};
-
-/*! \brief Dipole in 2D space
- */
-class abstract_dipole_strain_2d_potential : 
-  virtual public abstract_dipole_strain_potential {
-public:
-  virtual ~abstract_dipole_strain_2d_potential()=0;
-private:
-  arma::vec _p(const arma::vec& xs) const {
-    return arma::vec(xs.memptr(), 2);
+  virtual arma::vec _E0(const arma::vec&) const {
+    return _const_E0;
   }
-};
-
-/*! \brief Dipole in 3D space
- */
-class abstract_dipole_strain_3d_potential :
-  virtual public abstract_dipole_strain_potential {
-public:
-  virtual ~abstract_dipole_strain_3d_potential()=0;
-private:
-  arma::vec _p(const arma::vec& xs) const {
-    return arma::vec(xs.memptr(), 3);
-  }
-};
-
-/*! \brief Dipole whose susceptibility does not depend on space, direction, etc.
- */
-class abstract_dipole_strain_linear_potential :
-  virtual public abstract_dipole_strain_potential {
-public:
-  virtual ~abstract_dipole_strain_linear_potential()=0;
-
-  abstract_dipole_strain_linear_potential(const arma::mat& inv_chi) 
-    : _const_inv_chi(inv_chi) {}
-
-private:
-  arma::mat _inv_chi(const arma::vec&, const molecular_id) const {
-    return _const_inv_chi;
+  virtual arma::vec _dipole(const molecular_id, const arma::vec& x) const {
+    return _dipole_f(x, _const_E0);
   }
 
-  arma::mat _const_inv_chi;
+  arma::vec _const_E0;
+  std::function<arma::vec(const arma::vec& x, const arma::vec& E0)> _dipole_f;
+
 };
 
-/*! \brief Dipole, in 2D space, whose susceptibility tensor is linear
+/*! \brief Dipole potential for a constant electric field, param by two angles
+ *
+ * \param       E0          Electric field
+ * \param       mu          Fixed dipole magnitude
+ * \return                  Dipole potential
  */
-class dipole_strain_linear_2d_potential :
-  public abstract_dipole_strain_2d_potential,
-  public abstract_dipole_strain_linear_potential {
-public:
-  virtual ~dipole_strain_linear_2d_potential() {}
+const_E_const_suscept_dipole_electric_potential 
+  const_E_fixed_2D_dipole_potential(arma::vec E0, const double mu);
 
-  dipole_strain_linear_2d_potential(const arma::mat& inv_chi)
-    : abstract_dipole_strain_linear_potential(inv_chi) {}
-};
-
-/*! \brief Dipole, in 3D space, whose susceptibility tensor is linear
+/*! \brief Dipole potential for a constant electric field, param by two angles
+ *
+ * \param       E0          Electric field
+ * \param       kappa       Susceptibility parameter
+ * \return                  Dipole potential
  */
-class dipole_strain_linear_3d_potential :
-  public abstract_dipole_strain_3d_potential,
-  public abstract_dipole_strain_linear_potential {
-public:
-  virtual ~dipole_strain_linear_3d_potential() {}
+const_E_const_suscept_dipole_electric_potential 
+  const_E_uniaxial_2D_dipole_potential(arma::vec E0, const double kappa);
 
-  dipole_strain_linear_3d_potential(const arma::mat& inv_chi)
-    : abstract_dipole_strain_linear_potential(inv_chi) {}
-};
-
-/*! \brief Dipole, in 2D space, whose susceptibility tensor is nonlinear
+/*! \brief Dipole potential for a constant electric field, param by two angles
+ *
+ * \param       E0          Electric field
+ * \param       kappa       Susceptibility parameter
+ * \return                  Dipole potential
  */
-class dipole_strain_nonlinear_2d_potential : 
-  public abstract_dipole_strain_2d_potential {
-public:
-  virtual ~dipole_strain_nonlinear_2d_potential() {}
-
-  dipole_strain_nonlinear_2d_potential(std::function<arma::mat(const arma::vec&,
-    const molecular_id)> inv_chi_f) : _inv_chi_f(inv_chi_f) {}
-private:
-  arma::mat _inv_chi(const arma::vec& xs, const molecular_id id) const {
-    const double theta = xs(2);
-    arma::vec n({std::cos(theta), std::sin(theta)});
-    return _inv_chi_f(n, id);
-  }
-
-  std::function<arma::mat(const arma::vec&, const molecular_id)> _inv_chi_f;
-};
-
-/*! \brief Dipole, in 3D space, whose susceptibility tensor is nonlinear
- */
-class dipole_strain_nonlinear_3d_potential : 
-  public abstract_dipole_strain_3d_potential {
-public:
-  virtual ~dipole_strain_nonlinear_3d_potential() {}
-
-  dipole_strain_nonlinear_3d_potential(std::function<arma::mat(const arma::vec&,
-    const molecular_id)> inv_chi_f) : _inv_chi_f(inv_chi_f) {}
-private:
-  arma::mat _inv_chi(const arma::vec& xs, const molecular_id id) const {
-    const double phi = xs(3);
-    const double theta = xs(4);
-    const double cp = std::cos(phi);
-    const double sp = std::sin(phi);
-    const double ct = std::cos(theta);
-    const double st = std::sin(theta);
-    arma::vec n({cp * st, sp * st, ct});
-    return _inv_chi_f(n, id);
-  }
-
-  std::function<arma::mat(const arma::vec&, const molecular_id)> _inv_chi_f;
-};
+const_E_const_suscept_dipole_electric_potential 
+  const_E_TI_2D_dipole_potential(arma::vec E0, const double kappa);
 
 } // namespace pauth
 

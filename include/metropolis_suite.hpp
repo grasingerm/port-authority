@@ -91,6 +91,14 @@ public:
     _info_lvl = info_lvl;
   }
 
+  /*! \brief Get local metropolis simulation
+   *
+   * \return      Simulation object
+   */
+  inline const metropolis& local_sim() const {
+    return _local_sim;
+  }
+
 private:
   metropolis _local_sim;
   std::map<std::string, value_accessor> _variables_to_average_map;

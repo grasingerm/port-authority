@@ -492,7 +492,7 @@ arma::mat _uniaxial_chi(const arma::vec& n, const double kappa) {
 }
 
 arma::mat _TI_chi(const arma::vec& n, const double kappa) {
-  const auto D = n.n_cols;
+  const auto D = n.n_rows;
   return kappa * (arma::eye(D, D) - n * n.t());
 }
 

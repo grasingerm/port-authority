@@ -36,7 +36,6 @@ int main(int argc, char* argv[]) {
   size_t nterms;
   unsigned long nsteps;
   string fname, acc_criterion_str;
-  bool print_trajectory_flag;
 
   desc.add_options()
     ("help,h", "Produce this help message.")
@@ -51,8 +50,7 @@ int main(int argc, char* argv[]) {
       "Number of terms in expansion of analytical solution.")
     ("acception-criterion,a", 
      value<string>(&acc_criterion_str)->default_value("metropolis"), 
-     "Acceptance criterion (metropolis|kawasaki)")
-    ("print-trajectory,p", bool_switch(&print_trajectory_flag), "print trajectory through phase space");
+     "Acceptance criterion (metropolis|kawasaki)");
 
   variables_map vm;
   try {
@@ -90,14 +88,14 @@ int main(int argc, char* argv[]) {
   const size_t D = 2;
   const metric m = euclidean;
   const bc boundary = periodic_bc;
-  auto pot = const_E_uniaxial_2D_dipole_potential({0.0, 0.0, E0}, kappa);
+  auto pot = const_E_TI_2D_dipole_potential({0.0, 0.0, E0}, kappa);
   continuous_trial_move tmove(delta_max);
  
   metropolis sim(fname.c_str(), id, N, D, {2*M_PI, M_PI}, tmove, 
                  &pot, T, kB, m, boundary,
                  metropolis_acc);
 
-  metropolis_suite msuite(sim, 0, 1, info_lvl_flag::PROFILE);
+  metropolis_suite msuite(sim, 0, 1, info_lvl_flag::VERBOSE);
 
   msuite.add_variable_to_average("px", [&](const metropolis &sim) {
     return pot.dipole(id, sim.positions().col(0))(0);
@@ -110,24 +108,11 @@ int main(int argc, char* argv[]) {
   });
   msuite.add_variable_to_average("U", accessors::U);
 
-  if (taskid == 0 && print_trajectory_flag) 
-    msuite.local_sim().add_callback(print_trajectory_callback());
-
   msuite.simulate(nsteps);
   msuite.report_averages();
-
-  if (taskid == 0) {
-    unsigned long long fact = 1;
-    double num = std::pow(E0*E0 * kappa / (T * kB), 0) / (fact * (0 + 0.5)), 
-           denom = 0.0;
-    for (unsigned n = 1; n < nterms; ++n) {
-      fact *= n;
-      num += std::pow(E0*E0 * kappa / (T * kB), n) / (fact * (n + 0.5));
-      denom += (2 * n * std::pow(kappa / (T * kB), n) * std::pow(E0, 2*n-1)) 
-        / (fact * (n + 0.5));
-    }
+  
+  if(taskid == 0) {
     cout << '\n';
-    cout << "Expected <pz> = " << (num * T * kB) / denom << '\n';
     cout << "Low T limit <pz> = " << kappa * E0 << '\n';
     cout << "High T limit <pz> = " << kappa * E0 / 3.0 << '\n';
   }
